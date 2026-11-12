@@ -48,10 +48,6 @@
   }
   pre#room.hovering::after { opacity: 1; }
   pre#room span.hot { position: relative; z-index: 1; }
-  #loading {
-    position: absolute; left: 20px; bottom: 16px;
-    font-size: 12px; color: #8b8170;
-  }
 
 
   dialog {
@@ -109,7 +105,6 @@
 <body>
   <div class="stage">
     <pre id="room" aria-label="夕暮れのデスクを文字の点描で描いた絵。小物を押すとページが開きます。下の「部屋にあるもの」にも同じ内容があります。"></pre>
-    <div id="loading">灯りをつけています…</div>
   </div>
 
   <section class="things" aria-labelledby="things-title">
@@ -352,7 +347,7 @@
     for (let y = 0; y < ROWS; y++) rows.push(rowHTML(sc, y));
     pre.innerHTML = rows.join("\n");
     indexSpans();
-    document.getElementById("loading").remove();
+    pre.dataset.ready = "1";             // 描き終わり（確認用の目印）
 
     // スクロールして見えてきたカードから順に、寄りの AA を描いてふわっと出す
     computeBoxes(sc);
