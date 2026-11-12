@@ -62,8 +62,7 @@
   }
   .panel-head button { font: inherit; background: none; border: none; color: var(--ink); cursor: pointer; font-size: 14px; }
   .panel-body { padding: 16px 18px 20px; }
-  .panel-body h2 { font-size: 17px; margin: 0 0 8px; }
-  .panel-body p { font-size: 13px; line-height: 1.7; margin: 0 0 14px; opacity: .85; }
+  .panel-body h2 { font-size: 17px; margin: 0 0 14px; }
   .panel-body ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
   .panel-body a {
     display: block; padding: 8px 10px; border: 1px solid var(--line); border-radius: 4px;
@@ -121,7 +120,6 @@
     </div>
     <div class="panel-body">
       <h2 id="panel-title"></h2>
-      <p id="panel-desc"></p>
       <ul id="panel-links"></ul>
       <div id="panel-extra"></div>
     </div>
@@ -129,7 +127,7 @@
 
   <footer>source: <a id="src" href="#" target="_blank" rel="noopener">Notion</a></footer>
 
-  <script src="data.js?v=12"></script>
+  <script src="data.js?v=13"></script>
   <script src="scene.js?v=22"></script>
   <script>
   (async function () {
@@ -231,7 +229,6 @@
       setTimeout(() => {
         document.getElementById("panel-kind").textContent = it.furniture;
         document.getElementById("panel-title").textContent = it.title;
-        document.getElementById("panel-desc").textContent = it.desc;
         document.getElementById("panel-links").replaceChildren(...it.links.map((l) => {
           const li = document.createElement("li"), a = document.createElement("a");
           a.href = l.url; a.target = "_blank"; a.rel = "noopener"; a.textContent = l.label;
