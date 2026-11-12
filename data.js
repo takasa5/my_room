@@ -6,9 +6,9 @@ window.ROOM_DATA = {
   items: {
     photo: {
       furniture: "写真立て",
-      title: "🌇 自己大紹介のページ",
+      title: "🌇 All About Me",
       desc: "自己紹介のときに何を話すべきかいつもわからなくなるのでまとめを作ってみた、そんなページです。",
-      links: [{ label: "自己大紹介のページ", url: "https://abstracted-lancer-5f0.notion.site/ee7345238d91474d9cd093b9b24f0fea" }]
+      links: [{ label: "All About Me", url: "https://abstracted-lancer-5f0.notion.site/ee7345238d91474d9cd093b9b24f0fea" }]
     },
     books: {
       furniture: "本",
