@@ -24,7 +24,9 @@ window.ROOM_DATA = {
       desc: "音楽を聴くこと。聴いてきたものが自分をつくっている。",
       links: [
         { label: "Music", url: "https://abstracted-lancer-5f0.notion.site/1d08baf3c04b80c687eae831b0f5fe2a" }
-      ]
+      ],
+      // パネルに出す「最近聴いた曲」（last.fm）
+      image: "https://lastfm-recently-played.jeffreyca.workers.dev/svg?user=tixino&theme=nord&width=450&username=0&stats=compact&footer=wave"
     },
     papers: {
       furniture: "紙の束",
