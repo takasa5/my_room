@@ -72,6 +72,9 @@
   .panel-body a::before { content: "> "; color: var(--hot); }
   .panel-body a:hover, .panel-body a:focus-visible { border-color: var(--hot); color: var(--hot); }
   .panel-body img { display: block; max-width: 100%; margin-top: 14px; border-radius: 4px; }
+  .panel-body a.image-link { display: block; border: none; padding: 0; }
+  .panel-body a.image-link::before { content: none; }
+  .panel-body a.image-link:hover img, .panel-body a.image-link:focus-visible img { outline: 1px solid var(--hot); outline-offset: 2px; }
 
   /* ---- 部屋にあるもの: スクロールすると小物の寄りの AA と説明が順に現れる ---- */
   .things { width: 100%; max-width: 1200px; margin-top: 96px; }
@@ -126,7 +129,7 @@
 
   <footer>source: <a id="src" href="#" target="_blank" rel="noopener">Notion</a></footer>
 
-  <script src="data.js?v=11"></script>
+  <script src="data.js?v=12"></script>
   <script src="scene.js?v=22"></script>
   <script>
   (async function () {
@@ -239,7 +242,12 @@
         if (it.image) {
           const img = document.createElement("img");
           img.src = it.image; img.alt = "最近聴いた曲"; img.loading = "lazy";
-          extra.append(img);
+          if (it.imageLink) {                  // 画像を押すと別タブでそのページへ
+            const a = document.createElement("a");
+            a.href = it.imageLink; a.target = "_blank"; a.rel = "noopener";
+            a.className = "image-link"; a.append(img);
+            extra.append(a);
+          } else extra.append(img);
         }
         panel.showModal();
       }, PANEL_DELAY);

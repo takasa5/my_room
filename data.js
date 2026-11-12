@@ -26,7 +26,8 @@ window.ROOM_DATA = {
         { label: "Music", url: "https://abstracted-lancer-5f0.notion.site/1d08baf3c04b80c687eae831b0f5fe2a" }
       ],
       // パネルに出す「最近聴いた曲」（last.fm）
-      image: "https://lastfm-recently-played.jeffreyca.workers.dev/svg?user=tixino&theme=nord&width=450&username=0&stats=compact&footer=wave"
+      image: "https://lastfm-recently-played.jeffreyca.workers.dev/svg?user=tixino&theme=nord&width=450&username=0&stats=compact&footer=wave",
+      imageLink: "https://www.last.fm/user/tixino"   // 画像を押すと開くページ
     },
     papers: {
       furniture: "紙の束",
