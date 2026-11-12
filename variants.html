@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Room Variants</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root { --bg: #15171c; --ink: #7d8594; --ink-strong: #d3d8e1; --hot: #f2b45a; --line: #2c313b; --frame: #0b0c10; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink-strong);
+    font-family: "JetBrains Mono", ui-monospace, Menlo, monospace;
+    padding: 24px 16px 60px;
+  }
+  main { max-width: 1200px; margin: 0 auto; }
+  h1 { font-size: 15px; margin: 0 0 4px; }
+  p.lead { font-size: 12px; color: var(--ink); margin: 0 0 24px; }
+  section { margin-bottom: 36px; }
+  .head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 8px; flex-wrap: wrap; }
+  .key { color: var(--hot); font-weight: 700; font-size: 15px; }
+  .name { font-size: 14px; }
+  .note { font-size: 12px; color: var(--ink); }
+  .head a { margin-left: auto; font-size: 12px; color: var(--ink); }
+  .frame { }
+  canvas { display: block; width: 100%; }
+</style>
+</head>
+<body>
+<main>
+  <h1>~/my_room — 候補</h1>
+  <p class="lead">同じ陰影を、文字への変換だけ変えて並べています。気に入った記号（A〜F）を教えてください。各「この版で開く」から実際の操作感も試せます。</p>
+  <div id="list"></div>
+</main>
+<script src="scene.js?v=22"></script>
+<script>
+(async function () {
+  const CELL_ASPECT = 1.75;
+  const list = document.getElementById("list");
+  try { await document.fonts.load('12px "JetBrains Mono"'); } catch (_) {}
+
+  const cards = Object.entries(Scene.STYLES).map(([key, st]) => {
+    const sec = document.createElement("section");
+    sec.innerHTML = `<div class="head"><span class="key">${key}</span><span class="name">${st.name}</span>
+      <span class="note">${st.note}（横${st.cols}字）</span><a href="index.html?style=${key}">この版で開く →</a></div>
+      <div class="frame"><canvas></canvas></div>`;
+    list.append(sec);
+    return { key, st, canvas: sec.querySelector("canvas") };
+  });
+
+  function draw(canvas, sc) {
+    const dpr = window.devicePixelRatio || 1;
+    const w = canvas.clientWidth, cw = w / sc.cols, chh = cw * CELL_ASPECT;
+    canvas.style.height = chh * sc.rows + "px";
+    canvas.width = Math.round(w * dpr); canvas.height = Math.round(chh * sc.rows * dpr);
+    const ctx = canvas.getContext("2d");
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.font = `${(chh * 0.92).toFixed(2)}px "JetBrains Mono", ui-monospace, Menlo, monospace`;
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    for (let y = 0; y < sc.rows; y++) for (let x = 0; x < sc.cols; x++) {
+      const i = y * sc.cols + x, c = sc.ch[i];
+      if (c === " ") continue;
+      const k = sc.col[i];
+      ctx.fillStyle = `rgb(${k[0] * 255 | 0},${k[1] * 255 | 0},${k[2] * 255 | 0})`;
+      ctx.fillText(c, (x + 0.5 + sc.jx[i]) * cw, (y + 0.5 + sc.jy[i]) * chh);
+    }
+  }
+
+  // 列数ごとに陰影を 1 回だけ計算して使い回す
+  const bases = {};
+  for (const card of cards) {
+    const cols = card.st.cols, rows = Math.round(cols / CELL_ASPECT / 1.8);
+    if (!bases[cols]) bases[cols] = await Scene.render(cols, rows, CELL_ASPECT, () => new Promise(requestAnimationFrame));
+    card.sc = Scene.stylize(bases[cols], card.st);
+    draw(card.canvas, card.sc);
+  }
+  let t;
+  window.addEventListener("resize", () => { clearTimeout(t); t = setTimeout(() => cards.forEach((c) => c.sc && draw(c.canvas, c.sc)), 150); });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>My Room</title>
+<meta name="description" content="自己大紹介のページへの入口。夕暮れのデスクの小物を押すと、それぞれのページが開きます。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  /* 点描は「暗い地の上で光る点」として描いているので、ダーク配色のみ */
+  :root {
+    color-scheme: dark;
+    --bg: #15171c; --ink: #6b7382; --ink-strong: #c9ced8; --hot: #f2b45a;
+    --panel: #1d2027; --line: #343a45;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink-strong);
+    font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 24px 16px 40px;
+  }
+
+  .stage {
+    width: 100%; max-width: 1200px;
+    position: relative;
+  }
+  /* 絵は本物のテキスト。文字ごとの色は <span> で付ける */
+  pre#room {
+    margin: 0; white-space: pre; overflow: hidden;
+    font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-variant-ligatures: none; font-feature-settings: "liga" 0, "calt" 0;
+    color: var(--ink);
+  }
+  /* 小物の文字は最初から inline-block にしておく（揺らす瞬間に組み直しが起きないように） */
+  pre#room span[data-id] { cursor: pointer; display: inline-block; }
+  /* ホバー時の暗転は、絵の上に重ねた幕 1 枚で行う（文字ごとに不透明度を変えると重い） */
+  pre#room { position: relative; }
+  pre#room::after {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: rgba(21, 23, 28, .58); opacity: 0; transition: opacity .12s;
+  }
+  pre#room.hovering::after { opacity: 1; }
+  pre#room span.hot { position: relative; z-index: 1; }
+  #loading {
+    position: absolute; left: 20px; bottom: 16px;
+    font-size: 12px; color: #8b8170;
+  }
+
+
+  dialog {
+    border: 1px solid var(--line); background: var(--panel); color: var(--ink-strong);
+    padding: 0; width: min(460px, calc(100vw - 32px));
+    font-family: inherit; border-radius: 6px; box-shadow: 0 10px 40px rgba(0,0,0,.25);
+  }
+  dialog::backdrop { background: rgba(10, 10, 14, .45); }
+  .panel-head {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 14px; border-bottom: 1px dashed var(--line); font-size: 12px; color: var(--ink);
+  }
+  .panel-head button { font: inherit; background: none; border: none; color: var(--ink); cursor: pointer; font-size: 14px; }
+  .panel-body { padding: 16px 18px 20px; }
+  .panel-body h2 { font-size: 17px; margin: 0 0 8px; }
+  .panel-body p { font-size: 13px; line-height: 1.7; margin: 0 0 14px; opacity: .85; }
+  .panel-body ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+  .panel-body a {
+    display: block; padding: 8px 10px; border: 1px solid var(--line); border-radius: 4px;
+    color: var(--ink-strong); text-decoration: none; font-size: 13px;
+  }
+  .panel-body a::before { content: "> "; color: var(--hot); }
+  .panel-body a:hover, .panel-body a:focus-visible { border-color: var(--hot); color: var(--hot); }
+  .panel-body img { display: block; max-width: 100%; margin-top: 14px; border-radius: 4px; }
+
+  /* ---- 部屋にあるもの: スクロールすると小物の寄りの AA と説明が順に現れる ---- */
+  .things { width: 100%; max-width: 1200px; margin-top: 96px; }
+  .things > h2 { font-size: 12px; font-weight: 400; color: var(--ink); letter-spacing: .12em; margin: 0 0 40px; }
+  .things ol {
+    list-style: none; margin: 0; padding: 0;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 64px 44px;
+    grid-auto-rows: 1fr;                 /* どの行のカードも同じ高さ */
+  }
+  .thing { opacity: 0; transform: translateY(18px); transition: opacity .7s ease, transform .7s ease; }
+  .thing.in { opacity: 1; transform: none; }
+  .thing pre.crop {
+    margin: 0 0 16px; white-space: pre; overflow: hidden;
+    font-family: "JetBrains Mono", ui-monospace, Menlo, monospace;
+    font-variant-ligatures: none; font-feature-settings: "liga" 0, "calt" 0;
+    color: var(--ink);
+  }
+  .thing .kind { font-size: 11px; color: var(--ink); margin: 0; }
+  .thing h3 { font-size: 15px; margin: 4px 0 8px; font-weight: 700; }
+  .thing p.desc { font-size: 12.5px; line-height: 1.75; margin: 0 0 12px; opacity: .8; }
+  .thing a.card { display: block; height: 100%; color: inherit; text-decoration: none; }
+  .thing a.card:hover h3, .thing a.card:focus-visible h3 { color: var(--hot); }
+  .thing a.card:hover pre.crop { filter: brightness(1.25); }
+  .thing a.card:focus-visible { outline: 1px solid var(--hot); outline-offset: 8px; }
+  @media (prefers-reduced-motion: reduce) { .thing { transition: none; opacity: 1; transform: none; } }
+
+  footer { margin-top: 28px; font-size: 11px; color: var(--ink); }
+  footer a { color: inherit; }
+</style>
+</head>
+<body>
+  <div class="stage">
+    <pre id="room" aria-label="夕暮れのデスクを文字の点描で描いた絵。小物を押すとページが開きます。下の「部屋にあるもの」にも同じ内容があります。"></pre>
+    <div id="loading">灯りをつけています…</div>
+  </div>
+
+  <section class="things" aria-labelledby="things-title">
+    <h2 id="things-title">部屋にあるもの</h2>
+    <ol id="things"></ol>
+  </section>
+
+  <dialog id="panel" aria-labelledby="panel-title">
+    <div class="panel-head">
+      <span id="panel-kind"></span>
+      <button type="button" id="panel-close" aria-label="閉じる">[x]</button>
+    </div>
+    <div class="panel-body">
+      <h2 id="panel-title"></h2>
+      <p id="panel-desc"></p>
+      <ul id="panel-links"></ul>
+      <div id="panel-extra"></div>
+    </div>
+  </dialog>
+
+  <footer>source: <a id="src" href="#" target="_blank" rel="noopener">Notion</a></footer>
+
+  <script src="data.js?v=9"></script>
+  <script src="scene.js?v=22"></script>
+  <script>
+  (async function () {
+    const data = window.ROOM_DATA;
+    const items = data.items;
+    const pre = document.getElementById("room");
+    const panel = document.getElementById("panel");
+    document.getElementById("src").href = data.top;
+
+    // 文字変換のスタイル（scene.js の STYLES。?style=B のように切り替え可）
+    const STYLE_KEY = new URLSearchParams(location.search).get("style") || "F";
+    const STYLE = Scene.STYLES[STYLE_KEY] || Scene.STYLES.F;
+    // 画面幅に応じて解像度（文字数）を決める
+    const COLS = window.innerWidth < 700 ? Math.min(STYLE.cols, 150) : STYLE.cols;
+    const CELL_ASPECT = 1.75;            // セルの 高さ/幅
+    const ROWS = Math.round(COLS / CELL_ASPECT / 1.8);
+
+    let hot = null;
+
+    // ---- 文字サイズ: COLS 文字がちょうど幅に収まるように ----------------
+    let advance = 0.6;                   // 1 文字の幅 / font-size（実測で更新）
+    function measure() {
+      const probe = document.createElement("span");
+      probe.style.cssText = "position:absolute;visibility:hidden;white-space:pre;font:100px 'JetBrains Mono', ui-monospace, Menlo, monospace";
+      probe.textContent = "@".repeat(100);
+      document.body.append(probe);
+      advance = probe.getBoundingClientRect().width / 100 / 100;
+      probe.remove();
+    }
+    function fit() {
+      const w = pre.parentElement.clientWidth;
+      const fs = w / (COLS * advance);
+      pre.style.fontSize = fs + "px";
+      pre.style.lineHeight = (fs * advance * CELL_ASPECT) + "px";
+      pre.style.height = (fs * advance * CELL_ASPECT * ROWS) + "px";
+    }
+
+    // ---- テキスト化: 同じ色・同じ物の連続をひとつの <span> にまとめる ----
+    const q = (v) => Math.min(255, Math.round(v * 255 / 6) * 6);
+    const hex = (c) => "#" + c.map((v) => q(v).toString(16).padStart(2, "0")).join("");
+    const esc = (c) => (c === "<" ? "&lt;" : c === ">" ? "&gt;" : c === "&" ? "&amp;" : c);
+    function rowHTML(sc, y) {
+      let html = "", run = "", runColor = null, runId = null;
+      const flush = () => {
+        if (!run) return;
+        const idAttr = runId ? ` data-id="${runId}"` : "";
+        html += runColor ? `<span style="color:${runColor}"${idAttr}>${run}</span>` : (idAttr ? `<span${idAttr}>${run}</span>` : run);
+        run = "";
+      };
+      for (let x = 0; x < COLS; x++) {
+        const i = y * COLS + x, c = sc.ch[i];
+        const id = sc.ids[i] && items[sc.ids[i]] ? sc.ids[i] : null;
+        if (c === " ") {               // 空白は色を持たないので直前の塊に混ぜる
+          if (id !== runId) { flush(); runId = id; runColor = null; }
+          run += " "; continue;
+        }
+        const color = hex(sc.col[i]);
+        if (id !== runId || (runColor && color !== runColor)) { flush(); runId = id; }
+        runColor = color;
+        run += esc(c);
+      }
+      flush();
+      return html;
+    }
+
+    // 小物ごとの <span> 一覧（描き終わってから作る）
+    let spansById = {};
+    function indexSpans() {
+      spansById = {};
+      for (const el of pre.querySelectorAll("span[data-id]")) (spansById[el.dataset.id] ||= []).push(el);
+    }
+    const spansOf = (id) => spansById[id] || [];
+
+    // 押したときの揺れ。Web Animations で transform だけを動かす（レイアウトを触らない）
+    const PUSH = [
+      { transform: "translateX(0)" },
+      { transform: "translateX(.9ch)", offset: 0.3 },
+      { transform: "translateX(-.4ch)", offset: 0.6 },
+      { transform: "translateX(0)" }
+    ];
+    // 揺れ始めてからパネルを開くまでの待ち時間（ms）。0 で揺れと同時
+    const PANEL_DELAY = 0;
+    function pushAnim(id) {
+      for (const el of spansOf(id)) el.animate(PUSH, { duration: 320, easing: "ease-out" });
+    }
+
+    // ---- 操作 ---------------------------------------------------------
+
+    function setHot(id) {
+      if (hot === id) return;
+      if (hot) spansOf(hot).forEach((el) => el.classList.remove("hot"));
+      hot = id;
+      if (id) spansOf(id).forEach((el) => el.classList.add("hot"));
+      pre.classList.toggle("hovering", !!id);
+    }
+    function open(id) {
+      const it = items[id];
+      pushAnim(id);
+      setTimeout(() => {
+        document.getElementById("panel-kind").textContent = it.furniture;
+        document.getElementById("panel-title").textContent = it.title;
+        document.getElementById("panel-desc").textContent = it.desc;
+        document.getElementById("panel-links").replaceChildren(...it.links.map((l) => {
+          const li = document.createElement("li"), a = document.createElement("a");
+          a.href = l.url; a.target = "_blank"; a.rel = "noopener"; a.textContent = l.label;
+          li.append(a); return li;
+        }));
+        const extra = document.getElementById("panel-extra");
+        extra.replaceChildren();
+        if (it.image) {
+          const img = document.createElement("img");
+          img.src = it.image; img.alt = "最近聴いた曲"; img.loading = "lazy";
+          extra.append(img);
+        }
+        panel.showModal();
+      }, PANEL_DELAY);
+    }
+
+    const idOf = (e) => { const el = e.target.closest && e.target.closest("span[data-id]"); return el ? el.dataset.id : null; };
+    pre.addEventListener("mouseover", (e) => setHot(idOf(e)));
+    pre.addEventListener("mouseleave", () => setHot(null));
+    pre.addEventListener("click", (e) => {
+      if (String(window.getSelection())) return;   // 文字を選択しただけのときは開かない
+      const id = idOf(e); if (id) open(id);
+    });
+    document.getElementById("panel-close").addEventListener("click", () => panel.close());
+    panel.addEventListener("click", (e) => { if (e.target === panel) panel.close(); });
+
+    // ---- 部屋にあるもの（カード） ----------------------------------------
+    const thingsEl = document.getElementById("things");
+    const cards = Object.entries(items).map(([id, it]) => {
+      const li = document.createElement("li");
+      li.className = "thing";
+      // カード全体（寄りの AA と説明）が 1 つのリンク
+      li.innerHTML = `<a class="card" target="_blank" rel="noopener">
+        <pre class="crop" aria-hidden="true"></pre>
+        <p class="kind"></p><h3></h3><p class="desc"></p></a>`;
+      li.querySelector("a.card").href = it.links[0].url;
+      li.querySelector(".kind").textContent = it.furniture;
+      li.querySelector("h3").textContent = it.title;
+      li.querySelector(".desc").textContent = it.desc;
+      const crop = li.querySelector("pre.crop");
+      thingsEl.append(li);
+      return { id, li, crop, done: false };
+    });
+
+
+    // ---- 寄りの AA: 小物のまわりだけを高い解像度で描き直す ----------------
+    let boxes = {};                      // id -> 本番の絵での範囲（セル）
+    function computeBoxes(sc) {
+      boxes = {};
+      for (let i = 0; i < sc.ids.length; i++) {
+        const id = sc.ids[i]; if (!id || !items[id]) continue;
+        const x = i % COLS, y = (i / COLS) | 0;
+        const b = boxes[id] ||= { x0: x, y0: y, x1: x, y1: y };
+        if (x < b.x0) b.x0 = x; if (x > b.x1) b.x1 = x; if (y < b.y0) b.y0 = y; if (y > b.y1) b.y1 = y;
+      }
+    }
+    function cropHTML(sc, focus) {
+      const out = [];
+      for (let y = 0; y < sc.rows; y++) {
+        let html = "", run = "", runColor = null;
+        const flush = () => { if (run) html += runColor ? `<span style="color:${runColor}">${run}</span>` : run; run = ""; };
+        for (let x = 0; x < sc.cols; x++) {
+          const i = y * sc.cols + x, c = sc.ch[i];
+          if (c === " ") { run += " "; continue; }
+          const k = sc.ids[i] === focus ? 1 : 0.3;      // 主役以外は沈める
+          const color = hex(sc.col[i].map((v) => v * k));
+          if (runColor && color !== runColor) flush();
+          runColor = color; run += esc(c);
+        }
+        flush(); out.push(html);
+      }
+      return out.join("\n");
+    }
+    // 寄りの AA はすべて同じ枠（横 CROP_W 字 × 縦 CROP_H 行）で切り出す
+    const CROP_W = 96, CROP_H = 42;
+    function fitCrop(card) {
+      const w = card.crop.clientWidth;
+      const fs = Math.min(15, w / (CROP_W * advance));
+      const lh = fs * advance * CELL_ASPECT;
+      card.crop.style.fontSize = fs + "px";
+      card.crop.style.lineHeight = lh + "px";
+      card.crop.style.height = (lh * CROP_H) + "px";   // 描く前から高さを確保しておく
+    }
+    async function renderCrop(card) {
+      const b = boxes[card.id]; if (!b) return;
+      const pad = 2, bw = b.x1 - b.x0 + 1 + pad * 2, bh = b.y1 - b.y0 + 1 + pad * 2;
+      // 小物が枠いっぱいに収まる倍率（小さい物ほど大きく寄る）
+      const k = Math.max(1, Math.min(4, CROP_W / bw, CROP_H / bh));
+      const VC = Math.round(COLS * k), VR = Math.round(ROWS * k);
+      // 小物の中心を枠の中心に。絵の端にかかるときは内側へずらす
+      const cx = (b.x0 + b.x1 + 1) / 2 * k, cy = (b.y0 + b.y1 + 1) / 2 * k;
+      const x0 = Math.max(0, Math.min(VC - CROP_W, Math.round(cx - CROP_W / 2)));
+      const y0 = Math.max(0, Math.min(VR - CROP_H, Math.round(cy - CROP_H / 2)));
+      const sc = Scene.stylize(await Scene.render(VC, VR, CELL_ASPECT, null, [x0, y0, x0 + CROP_W, y0 + CROP_H]), STYLE);
+      card.crop.innerHTML = cropHTML(sc, card.id);
+    }
+
+    // ---- レンダリング（上から少しずつ現像する） ------------------------
+    try { await document.fonts.load('12px "JetBrains Mono"'); } catch (_) {}
+    measure();
+    fit();
+    new ResizeObserver(fit).observe(pre.parentElement);
+    let shown = 0;
+    const base = await Scene.render(COLS, ROWS, CELL_ASPECT, (y, part) => new Promise((res) => {
+      const sc = Scene.stylize(part, STYLE, y + 1);
+      let html = "";
+      for (; shown <= y; shown++) html += (shown ? "\n" : "") + rowHTML(sc, shown);
+      pre.insertAdjacentHTML("beforeend", html);
+      indexSpans();
+      requestAnimationFrame(res);
+    }));
+    // 全行がそろってから、隣の行を参照する処理（輪郭のほんのり強調）込みで描き直す
+    const sc = Scene.stylize(base, STYLE);
+    const rows = [];
+    for (let y = 0; y < ROWS; y++) rows.push(rowHTML(sc, y));
+    pre.innerHTML = rows.join("\n");
+    indexSpans();
+    document.getElementById("loading").remove();
+
+    // スクロールして見えてきたカードから順に、寄りの AA を描いてふわっと出す
+    computeBoxes(sc);
+    let queue = Promise.resolve();
+    const io = new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        if (!e.isIntersecting) continue;
+        const card = cards.find((c) => c.li === e.target);
+        io.unobserve(card.li);
+        card.li.classList.add("in");
+        queue = queue.then(() => renderCrop(card)).then(() => new Promise(requestAnimationFrame));
+      }
+    }, { rootMargin: "0px 0px 200px 0px" });
+    cards.forEach((c) => { fitCrop(c); io.observe(c.li); });
+    new ResizeObserver(() => cards.forEach(fitCrop)).observe(thingsEl);
+  })();
+  </script>
+</body>
+</html>
