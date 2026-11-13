@@ -14,7 +14,10 @@ window.ROOM_DATA = {
       title: "📚 Books",
       links: [
         { label: "Books", url: "https://abstracted-lancer-5f0.notion.site/1d08baf3c04b80209612c2bc34b493f0" }
-      ]
+      ],
+      // パネルに出す「読み終わった本」の表紙（ブクログ）
+      // status: 1=読みたい 2=いま読んでる 3=読み終わった 4=積読（省くと全部）
+      booklog: { user: "takasa5", count: 8, status: 3 }
     },
     audio: {
       furniture: "ヘッドホンとスピーカー",
