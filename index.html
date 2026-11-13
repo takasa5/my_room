@@ -74,6 +74,8 @@
   .panel-body a.image-link { display: block; border: none; padding: 0; }
   .panel-body a.image-link::before { content: none; }
   .panel-body a.image-link:hover img, .panel-body a.image-link:focus-visible img { outline: 1px solid var(--hot); outline-offset: 2px; }
+  .panel-body .covers { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 14px; }
+  .panel-body .covers img { width: 100%; aspect-ratio: 2 / 3; object-fit: contain; margin-top: 0; }
 
   /* ---- 部屋にあるもの: スクロールすると小物の寄りの AA と説明が順に現れる ---- */
   .things { width: 100%; max-width: 1200px; margin-top: 96px; }
@@ -246,8 +248,41 @@
             extra.append(a);
           } else extra.append(img);
         }
+        if (it.booklog) {
+          const box = document.createElement("div");
+          box.className = "covers";
+          extra.append(box);                   // 届く前に別のパネルへ移ったら box ごと捨てられる
+          loadBooklog(it.booklog).then((books) => box.replaceChildren(...books.map((b) => {
+            const a = document.createElement("a"), img = document.createElement("img");
+            a.href = b.url; a.target = "_blank"; a.rel = "noopener";
+            a.className = "image-link"; a.title = b.title;
+            img.src = b.image; img.alt = b.title; img.loading = "lazy";
+            a.append(img); return a;
+          }))).catch(() => box.remove());      // 取れなければ何も出さない
+        }
         panel.showModal();
       }, PANEL_DELAY);
+    }
+
+    // ブクログの本棚を読む。API に CORS ヘッダーがないので fetch ではなく JSONP で読む。
+    const booklogCache = {};
+    function loadBooklog({ user, count, status = 0 }) {
+      const key = user + "/" + count + "/" + status;
+      return booklogCache[key] || (booklogCache[key] = new Promise((resolve, reject) => {
+        const cb = "__booklog_" + Object.keys(booklogCache).length;
+        const s = document.createElement("script");
+        const done = () => { delete window[cb]; s.remove(); };
+        const https = (u) => typeof u === "string" && u.startsWith("https://");
+        window[cb] = (res) => {
+          done();
+          resolve((res && res.books || []).filter((b) => https(b.url) && https(b.image))
+            .map((b) => ({ url: b.url, image: b.image, title: String(b.title || "") })));
+        };
+        s.onerror = () => { done(); delete booklogCache[key]; reject(new Error("booklog")); };
+        s.src = "https://api.booklog.jp/v2/json/" + encodeURIComponent(user) +
+          "?count=" + encodeURIComponent(count) + "&status=" + encodeURIComponent(status) + "&callback=" + cb;
+        document.head.append(s);
+      }));
     }
 
     const idOf = (e) => { const el = e.target.closest && e.target.closest("span[data-id]"); return el ? el.dataset.id : null; };
