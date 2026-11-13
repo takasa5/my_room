@@ -76,6 +76,7 @@
   .panel-body a.image-link:hover img, .panel-body a.image-link:focus-visible img { outline: 1px solid var(--hot); outline-offset: 2px; }
   .panel-body .covers { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 14px; }
   .panel-body .covers img { width: 100%; aspect-ratio: 2 / 3; object-fit: contain; margin-top: 0; }
+  .panel-body .covers .ph { aspect-ratio: 2 / 3; border-radius: 4px; background: var(--line); opacity: .4; }
 
   /* ---- 部屋にあるもの: スクロールすると小物の寄りの AA と説明が順に現れる ---- */
   .things { width: 100%; max-width: 1200px; margin-top: 96px; }
@@ -251,14 +252,18 @@
         if (it.booklog) {
           const box = document.createElement("div");
           box.className = "covers";
+          // 届くまでは同じ大きさの枠を置いて、表紙が来ても高さが跳ねないようにする
+          box.replaceChildren(...Array.from({ length: it.booklog.count }, () => {
+            const ph = document.createElement("div"); ph.className = "ph"; return ph;
+          }));
           extra.append(box);                   // 届く前に別のパネルへ移ったら box ごと捨てられる
-          loadBooklog(it.booklog).then((books) => box.replaceChildren(...books.map((b) => {
+          loadBooklog(it.booklog).then((books) => books.length ? box.replaceChildren(...books.map((b) => {
             const a = document.createElement("a"), img = document.createElement("img");
             a.href = b.url; a.target = "_blank"; a.rel = "noopener";
             a.className = "image-link"; a.title = b.title;
-            img.src = b.image; img.alt = b.title; img.loading = "lazy";
+            img.src = b.image; img.alt = b.title;
             a.append(img); return a;
-          }))).catch(() => box.remove());      // 取れなければ何も出さない
+          })) : box.remove()).catch(() => box.remove());   // 取れない・0 冊なら何も出さない
         }
         panel.showModal();
       }, PANEL_DELAY);
@@ -271,19 +276,31 @@
       return booklogCache[key] || (booklogCache[key] = new Promise((resolve, reject) => {
         const cb = "__booklog_" + Object.keys(booklogCache).length;
         const s = document.createElement("script");
-        const done = () => { delete window[cb]; s.remove(); };
+        const done = () => { clearTimeout(timer); delete window[cb]; s.remove(); };
+        const fail = () => { done(); delete booklogCache[key]; reject(new Error("booklog")); };  // 次に開いたとき取り直す
         const https = (u) => typeof u === "string" && u.startsWith("https://");
         window[cb] = (res) => {
           done();
           resolve((res && res.books || []).filter((b) => https(b.url) && https(b.image))
             .map((b) => ({ url: b.url, image: b.image, title: String(b.title || "") })));
         };
-        s.onerror = () => { done(); delete booklogCache[key]; reject(new Error("booklog")); };
+        const timer = setTimeout(fail, 10000);   // 返事が来ないまま待ち続けない
+        s.onerror = fail;                        // 通信エラー・404 など
+        // 200 で届いたのに callback が呼ばれなかった（空の応答など）。callback は script の実行中に呼ばれるので、load 時点で残っていれば未呼び出し
+        s.onload = () => { if (window[cb]) fail(); };
         s.src = "https://api.booklog.jp/v2/json/" + encodeURIComponent(user) +
           "?count=" + encodeURIComponent(count) + "&status=" + encodeURIComponent(status) + "&callback=" + cb;
         document.head.append(s);
       }));
     }
+
+    // パネルを開く前に、本の一覧と表紙画像を読んでおく（開いたときにはもう手元にある状態にする）
+    const preloaded = [];
+    Object.values(items).filter((it) => it.booklog).forEach((it) => {
+      loadBooklog(it.booklog)
+        .then((books) => books.forEach((b) => { const im = new Image(); im.src = b.image; preloaded.push(im); }))
+        .catch(() => {});                      // 失敗はパネルを開いたときに改めて扱う
+    });
 
     const idOf = (e) => { const el = e.target.closest && e.target.closest("span[data-id]"); return el ? el.dataset.id : null; };
     pre.addEventListener("mouseover", (e) => setHot(idOf(e)));
