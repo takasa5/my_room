@@ -297,14 +297,14 @@
       }, PANEL_DELAY);
     }
 
-    // GitHub の草と、最近いじったリポジトリのカード画像（github.js）
+    // GitHub の草（直近 gh.weeks 週）と、最近いじったリポジトリのカード画像（github.js）
     function githubParts(gh) {
       const parts = [];
       if (gh.levels.length) {
         const grass = document.createElement("div");
         grass.className = "grass";
         grass.setAttribute("role", "img");
-        grass.setAttribute("aria-label", `GitHub の草（この 1 年で ${gh.total} contributions）`);
+        grass.setAttribute("aria-label", `GitHub の草（直近 ${gh.weeks} 週で ${gh.total} contributions）`);
         grass.replaceChildren(...gh.levels.map((v) => {
           const i = document.createElement("i");
           if (v) i.className = "l" + v;
@@ -312,7 +312,7 @@
         }));
         const note = document.createElement("a");
         note.href = gh.url; note.target = "_blank"; note.rel = "noopener";
-        note.className = "grass-note"; note.textContent = `${gh.total} contributions in the last year ↗`;
+        note.className = "grass-note"; note.textContent = `${gh.total} contributions in the last ${gh.weeks} weeks ↗`;
         parts.push(grass, note);
       }
       if (gh.repos.length) {

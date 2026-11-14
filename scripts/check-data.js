@@ -123,6 +123,7 @@ function checkGithub() {
   if (!isObj(gh)) { fail("github.js", "window.GITHUB がオブジェクトになっていない"); return; }
   if (!isHttps(gh.url)) fail("GITHUB.url", "https:// の URL にする");
   if (!(Number.isInteger(gh.total) && gh.total >= 0)) fail("GITHUB.total", "0 以上の整数にする");
+  if (!(Number.isInteger(gh.weeks) && gh.weeks > 0)) fail("GITHUB.weeks", "正の整数にする");
   if (!/^\d{4}-\d{2}-\d{2}$/.test(gh.start) || new Date(gh.start + "T00:00:00Z").getUTCDay() !== 0) {
     fail("GITHUB.start", "日曜日の日付（YYYY-MM-DD）にする（草の 1 列目の一番上が日曜日）");
   }

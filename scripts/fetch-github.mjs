@@ -1,12 +1,13 @@
-// GitHub の草（この 1 年の活動）と、最近いじったリポジトリを取ってきて github.js に書き出す。
+// GitHub の草（直近の活動）と、最近いじったリポジトリを取ってきて github.js に書き出す。
 // 草は GraphQL API でしか取れず、API にはトークンが要るのでブラウザからは読めない。
 // 代わりに GitHub Actions（または手元）でこのスクリプトを動かし、結果を静的ファイルとして置く。
-//   使い方: GITHUB_TOKEN=... node scripts/fetch-github.mjs [ユーザー名] [リポジトリの件数]
+//   使い方: GITHUB_TOKEN=... node scripts/fetch-github.mjs [ユーザー名] [リポジトリの件数] [草の週数]
 //   手元なら GITHUB_TOKEN=$(gh auth token) でよい
 import { writeFileSync } from "node:fs";
 
 const user = process.argv[2] || "takasa5";
 const count = Number(process.argv[3]) || 4;
+const weeks = Number(process.argv[4]) || 26;   // 草に出す週数（API は 1 年分返すので、新しい方から切り出す）
 const token = process.env.GITHUB_TOKEN;
 if (!token) throw new Error("GITHUB_TOKEN がない");
 
@@ -17,8 +18,7 @@ const query = `query($login: String!, $n: Int!) {
   user(login: $login) {
     contributionsCollection {
       contributionCalendar {
-        totalContributions
-        weeks { contributionDays { date contributionLevel } }
+        weeks { contributionDays { date contributionLevel contributionCount } }
       }
     }
     repositories(first: $n, privacy: PUBLIC, isFork: false, ownerAffiliations: OWNER,
@@ -41,7 +41,8 @@ const u = body.data.user;
 if (!u) throw new Error(`ユーザー ${user} が見つからない`);
 
 const cal = u.contributionsCollection.contributionCalendar;
-const days = cal.weeks.flatMap((w) => w.contributionDays);
+// 濃さ（level）は GitHub が 1 年分を見て決めたものをそのまま使う
+const days = cal.weeks.slice(-weeks).flatMap((w) => w.contributionDays);
 const repos = u.repositories.nodes
   .filter((r) => !r.isArchived && r.name.toLowerCase() !== user.toLowerCase())
   .slice(0, count)
@@ -51,7 +52,8 @@ if (!days.length) throw new Error("草が 1 日分も取れなかった");
 const out = {
   user,
   url: `https://github.com/${user}`,
-  total: cal.totalContributions,
+  weeks,                                                // 草の週数（列の数）
+  total: days.reduce((n, d) => n + d.contributionCount, 0),   // その間の contributions
   start: days[0].date,                                   // levels[0] の日付（日曜日）
   levels: days.map((d) => LEVELS[d.contributionLevel] ?? 0),
   repos,
