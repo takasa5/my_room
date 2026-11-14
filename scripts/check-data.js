@@ -43,7 +43,7 @@ if (!isObj(data)) {
     for (const [id, it] of Object.entries(data.items)) {
       const w = `items.${id}`;
       if (!isObj(it)) { fail(w, "オブジェクトにする"); continue; }
-      checkKeys(w, it, ["furniture", "title", "links", "image", "imageSize", "imageLink", "booklog"]);
+      checkKeys(w, it, ["furniture", "title", "links", "image", "imageSize", "imageLink", "booklog", "filmarks"]);
 
       // 押しても反応しない家具にならないよう、scene.js に同じ id の家具があること
       if (!sceneIds.has(id)) fail(w, `scene.js に id "${id}" の家具がない`);
@@ -84,8 +84,31 @@ if (!isObj(data)) {
           if ("status" in b && ![1, 2, 3, 4].includes(b.status)) fail(`${bw}.status`, "1〜4 のどれかにする（省くと全部）");
         }
       }
+
+      if ("filmarks" in it && it.filmarks !== true) fail(`${w}.filmarks`, "true にする（使わないなら書かない）");
     }
+
+    // filmarks.js は Actions がスクレイピングして作るので、中身の形もここで見る。
+    // index.html は url / image をそのまま使うので https であること。
+    if (Object.values(data.items).some((it) => isObj(it) && it.filmarks === true)) checkFilmarks();
   }
+}
+
+function checkFilmarks() {
+  const file = path.join(root, "filmarks.js");
+  if (!fs.existsSync(file)) { fail("filmarks.js", "filmarks: true の項目があるのにファイルがない"); return; }
+  const sb = { window: {} };
+  vm.runInNewContext(fs.readFileSync(file, "utf8"), sb, { filename: "filmarks.js" });
+  const fm = sb.window.FILMARKS;
+  if (!isObj(fm) || !Array.isArray(fm.works)) { fail("filmarks.js", "window.FILMARKS.works が配列になっていない"); return; }
+  fm.works.forEach((x, i) => {
+    const fw = `FILMARKS.works[${i}]`;
+    if (!isObj(x)) { fail(fw, "オブジェクトにする"); return; }
+    if (!isHttps(x.url)) fail(`${fw}.url`, "https:// の URL にする");
+    if (!isHttps(x.image)) fail(`${fw}.image`, "https:// の URL にする");
+    if (typeof x.title !== "string") fail(`${fw}.title`, "文字列にする");
+    if (x.rating !== null && !(typeof x.rating === "number" && x.rating >= 0 && x.rating <= 5)) fail(`${fw}.rating`, "0〜5 の数か null にする");
+  });
 }
 
 if (errors.length) {
