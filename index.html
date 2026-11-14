@@ -130,7 +130,8 @@
 
   <footer>source: <a id="src" href="#" target="_blank" rel="noopener">Notion</a></footer>
 
-  <script src="data.js?v=13"></script>
+  <script src="data.js?v=14"></script>
+  <script src="filmarks.js"></script>
   <script src="scene.js?v=22"></script>
   <script>
   (async function () {
@@ -265,6 +266,19 @@
             a.append(img); return a;
           })) : box.remove()).catch(() => box.remove());   // 取れない・0 冊なら何も出さない
         }
+        const fm = it.filmarks && window.FILMARKS;   // filmarks.js が無い・空なら何も出さない
+        if (fm && fm.works.length) {
+          const box = document.createElement("div");
+          box.className = "covers";
+          box.replaceChildren(...fm.works.map((w) => {
+            const a = document.createElement("a"), img = document.createElement("img");
+            a.href = w.url; a.target = "_blank"; a.rel = "noopener";
+            a.className = "image-link"; a.title = w.title + (w.rating ? "  ★" + w.rating : "");
+            img.src = w.image; img.alt = w.title;
+            a.append(img); return a;
+          }));
+          extra.append(box);
+        }
         panel.showModal();
       }, PANEL_DELAY);
     }
@@ -321,6 +335,9 @@
         .then((books) => books.forEach((b) => { const im = new Image(); im.src = b.image; preloaded.push(im); }))
         .catch(() => {});                      // 失敗はパネルを開いたときに改めて扱う
     });
+    if (window.FILMARKS && Object.values(items).some((it) => it.filmarks)) {
+      window.FILMARKS.works.forEach((w) => { const im = new Image(); im.src = w.image; preloaded.push(im); });
+    }
 
     const idOf = (e) => { const el = e.target.closest && e.target.closest("span[data-id]"); return el ? el.dataset.id : null; };
     pre.addEventListener("mouseover", (e) => setHot(idOf(e)));

@@ -1,0 +1,52 @@
+# Filmarks の「最近観た映画」を取り直して filmarks.js を更新する。
+# Filmarks にはブラウザから読める API がないので、ここで取得して静的ファイルとしてコミットする。
+name: Update Filmarks
+
+on:
+  schedule:
+    - cron: "0 20 * * *"   # 毎日 5:00 JST
+  workflow_dispatch:        # Actions 画面から手動でも動かせる
+
+permissions:
+  contents: write   # filmarks.js をコミットする
+  pages: write      # 更新後に Pages の再ビルドを依頼する
+
+concurrency:
+  group: filmarks
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Fetch Filmarks
+        run: node scripts/fetch-filmarks.mjs tks5 8
+
+      - name: Commit if changed
+        id: commit
+        run: |
+          if git diff --quiet -- filmarks.js; then
+            echo "変更なし"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add filmarks.js
+          git commit -m "Filmarks の最近観た映画を更新"
+          git push
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      # GITHUB_TOKEN での push は Pages のビルドを起こさないことがあるので、明示的に依頼する
+      - name: Rebuild Pages
+        if: steps.commit.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X POST "repos/${{ github.repository }}/pages/builds"
