@@ -29,7 +29,7 @@ jobs:
       - name: Fetch GitHub
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: node scripts/fetch-github.mjs takasa5 4
+        run: node scripts/fetch-github.mjs takasa5 4 26
 
       # 取れた中身が壊れていたら、コミットせずに止める（前日の github.js のまま残る）。
       # GITHUB_TOKEN での push では test workflow が動かないので、ここで確かめる。
