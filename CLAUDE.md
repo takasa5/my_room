@@ -1,6 +1,6 @@
 # my_room
 
-自己紹介ページ（Notion）への入口になる静的サイト。GitHub Pages が main のルートをそのまま配信するので、**main へのマージがそのまま公開になる**。
+自己紹介ページ（Notion）への入口になる静的サイト。GitHub Pages で公開している。
 
 * `index.html`：画面と操作。`scene.js`：部屋を文字の点描で描く。`data.js`：小物と Notion ページの対応表
 * `filmarks.js` は `scripts/fetch-filmarks.mjs` が作る（`.github/workflows/filmarks.yml` が毎日更新する）。手で書き換えない
