@@ -65,7 +65,9 @@ window.ROOM_DATA = {
     computer: {
       furniture: "パソコン",
       title: "💻 Developments",
-      links: [{ label: "Developments", url: "https://abstracted-lancer-5f0.notion.site/1db9e26d46c6417da13ade7ddeca6691" }]
+      links: [{ label: "Developments", url: "https://abstracted-lancer-5f0.notion.site/1db9e26d46c6417da13ade7ddeca6691" }],
+      // パネルに出す GitHub の草と、最近いじったリポジトリのカード画像。中身は github.js（scripts/fetch-github.mjs が生成）
+      github: true
     },
     diary: {
       furniture: "日記帳",
