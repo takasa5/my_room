@@ -123,6 +123,19 @@ test("ポスターを押すと Filmarks のポスターが出る", () => withPag
   assert.equal(await panel.locator(".covers a.image-link").count(), works);
 }));
 
+test("パソコンを押すと GitHub の草とリポジトリのカードが出る", () => withPage("computer", {}, async (page) => {
+  const gh = await page.evaluate(() => window.GITHUB);
+  const panel = await openPanel(page, "computer");
+  assert.equal(await panel.locator(".grass i").count(), gh.levels.length);
+  assert.equal(await panel.locator("a.grass-note").getAttribute("href"), gh.url);
+  // 画像が読めたあとも（失敗して消えずに）全部残っていること
+  await page.waitForFunction(() => [...document.querySelectorAll("#panel .repos img")].every((im) => im.complete));
+  assert.deepEqual(
+    await panel.locator(".repos a.image-link").evaluateAll((as) => as.map((a) => a.href)),
+    gh.repos.map((r) => r.url)
+  );
+}));
+
 test("ヘッドホンを押すと last.fm の画像が出る", () => withPage("audio", {}, async (page) => {
   const data = await roomData(page);
   const panel = await openPanel(page, "audio");
@@ -136,6 +149,13 @@ test("外部が全部落ちていても、部屋が描けてパネルが開く",
   // 表紙が取れなければ枠ごと消える
   await page.waitForFunction(() => !document.querySelector("#panel-extra .covers"));
   assert.ok(await panel.locator("#panel-links a").count() > 0);
+
+  // リポジトリのカード画像が取れなくても、草（github.js から描く）は出る
+  await page.click("#panel-close");
+  await page.waitForSelector("#panel[open]", { state: "detached" });
+  const gh = await openPanel(page, "computer");
+  await page.waitForFunction(() => !document.querySelector("#panel .repos a"));
+  assert.ok(await gh.locator(".grass i").count() > 0);
 }));
 
 test("スマホの幅でも横にはみ出さない", () => withPage("mobile", { viewport: { width: 375, height: 812 } }, async (page) => {

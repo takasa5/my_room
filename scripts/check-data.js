@@ -43,7 +43,7 @@ if (!isObj(data)) {
     for (const [id, it] of Object.entries(data.items)) {
       const w = `items.${id}`;
       if (!isObj(it)) { fail(w, "オブジェクトにする"); continue; }
-      checkKeys(w, it, ["furniture", "title", "links", "image", "imageSize", "imageLink", "booklog", "filmarks"]);
+      checkKeys(w, it, ["furniture", "title", "links", "image", "imageSize", "imageLink", "booklog", "filmarks", "github"]);
 
       // 押しても反応しない家具にならないよう、scene.js に同じ id の家具があること
       if (!sceneIds.has(id)) fail(w, `scene.js に id "${id}" の家具がない`);
@@ -86,11 +86,13 @@ if (!isObj(data)) {
       }
 
       if ("filmarks" in it && it.filmarks !== true) fail(`${w}.filmarks`, "true にする（使わないなら書かない）");
+      if ("github" in it && it.github !== true) fail(`${w}.github`, "true にする（使わないなら書かない）");
     }
 
     // filmarks.js は Actions がスクレイピングして作るので、中身の形もここで見る。
     // index.html は url / image をそのまま使うので https であること。
     if (Object.values(data.items).some((it) => isObj(it) && it.filmarks === true)) checkFilmarks();
+    if (Object.values(data.items).some((it) => isObj(it) && it.github === true)) checkGithub();
   }
 }
 
@@ -108,6 +110,30 @@ function checkFilmarks() {
     if (!isHttps(x.image)) fail(`${fw}.image`, "https:// の URL にする");
     if (typeof x.title !== "string") fail(`${fw}.title`, "文字列にする");
     if (x.rating !== null && !(typeof x.rating === "number" && x.rating >= 0 && x.rating <= 5)) fail(`${fw}.rating`, "0〜5 の数か null にする");
+  });
+}
+
+// github.js は Actions が GitHub API から作る。index.html は levels で草を描き、url / image をそのまま使う
+function checkGithub() {
+  const file = path.join(root, "github.js");
+  if (!fs.existsSync(file)) { fail("github.js", "github: true の項目があるのにファイルがない"); return; }
+  const sb = { window: {} };
+  vm.runInNewContext(fs.readFileSync(file, "utf8"), sb, { filename: "github.js" });
+  const gh = sb.window.GITHUB;
+  if (!isObj(gh)) { fail("github.js", "window.GITHUB がオブジェクトになっていない"); return; }
+  if (!isHttps(gh.url)) fail("GITHUB.url", "https:// の URL にする");
+  if (!(Number.isInteger(gh.total) && gh.total >= 0)) fail("GITHUB.total", "0 以上の整数にする");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(gh.start) || new Date(gh.start + "T00:00:00Z").getUTCDay() !== 0) {
+    fail("GITHUB.start", "日曜日の日付（YYYY-MM-DD）にする（草の 1 列目の一番上が日曜日）");
+  }
+  if (!Array.isArray(gh.levels) || !gh.levels.every((v) => [0, 1, 2, 3, 4].includes(v))) fail("GITHUB.levels", "0〜4 の数の配列にする");
+  if (!Array.isArray(gh.repos)) { fail("GITHUB.repos", "配列にする"); return; }
+  gh.repos.forEach((r, i) => {
+    const rw = `GITHUB.repos[${i}]`;
+    if (!isObj(r)) { fail(rw, "オブジェクトにする"); return; }
+    if (!isText(r.name)) fail(`${rw}.name`, "空でない文字列にする");
+    if (!isHttps(r.url)) fail(`${rw}.url`, "https:// の URL にする");
+    if (!isHttps(r.image)) fail(`${rw}.image`, "https:// の URL にする");
   });
 }
 
