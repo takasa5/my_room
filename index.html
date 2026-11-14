@@ -70,7 +70,7 @@
   }
   .panel-body a::before { content: "> "; color: var(--hot); }
   .panel-body a:hover, .panel-body a:focus-visible { border-color: var(--hot); color: var(--hot); }
-  .panel-body img { display: block; max-width: 100%; margin-top: 14px; border-radius: 4px; }
+  .panel-body img { display: block; max-width: 100%; height: auto; margin-top: 14px; border-radius: 4px; }
   .panel-body a.image-link { display: block; border: none; padding: 0; }
   .panel-body a.image-link::before { content: none; }
   .panel-body a.image-link:hover img, .panel-body a.image-link:focus-visible img { outline: 1px solid var(--hot); outline-offset: 2px; }
@@ -240,8 +240,8 @@
         const extra = document.getElementById("panel-extra");
         extra.replaceChildren();
         if (it.image) {
-          const img = document.createElement("img");
-          img.src = it.image; img.alt = "最近聴いた曲"; img.loading = "lazy";
+          const img = imageFor(it.image, it.imageSize);
+          img.alt = "最近聴いた曲";
           if (it.imageLink) {                  // 画像を押すと別タブでそのページへ
             const a = document.createElement("a");
             a.href = it.imageLink; a.target = "_blank"; a.rel = "noopener";
@@ -294,7 +294,27 @@
       }));
     }
 
-    // パネルを開く前に、本の一覧と表紙画像を読んでおく（開いたときにはもう手元にある状態にする）
+    // パネルに出す画像（last.fm）。開く前に読んでおき、開いたときはその <img> をそのまま使う。
+    // 古くなったら（IMAGE_TTL 超え）読み直す。失敗した画像は捨てて、次に開いたとき取り直す。
+    const IMAGE_TTL = 5 * 60 * 1000;
+    const imageCache = {};   // url -> { img, at, failed }
+    function imageFor(url, size) {
+      const hit = imageCache[url];
+      if (hit && !hit.failed && Date.now() - hit.at < IMAGE_TTL) return hit.img;
+      const img = new Image(), entry = (imageCache[url] = { img, at: Date.now(), failed: false });
+      if (size) {                              // 届くまでは同じ縦横比の枠を取って、高さが跳ねないようにする
+        img.style.width = "100%"; img.style.aspectRatio = size[0] + " / " + size[1];
+        img.addEventListener("load", () => { img.style.width = ""; img.style.aspectRatio = ""; });
+      }
+      img.addEventListener("error", () => {    // 取れなければ画像（とそのリンク）ごと消す
+        entry.failed = true; (img.closest(".image-link") || img).remove();
+      });
+      img.src = url;
+      return img;
+    }
+
+    // パネルを開く前に、画像と本の一覧・表紙を読んでおく（開いたときにはもう手元にある状態にする）
+    Object.values(items).filter((it) => it.image).forEach((it) => imageFor(it.image, it.imageSize));
     const preloaded = [];
     Object.values(items).filter((it) => it.booklog).forEach((it) => {
       loadBooklog(it.booklog)
