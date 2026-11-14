@@ -20,14 +20,19 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4.4.0
+      - uses: actions/checkout@v7.0.1
 
-      - uses: actions/setup-node@v4.4.0
+      - uses: actions/setup-node@v7.1.0
         with:
-          node-version: 22
+          node-version: 24
 
       - name: Fetch Filmarks
         run: node scripts/fetch-filmarks.mjs tks5 8
+
+      # Filmarks のページ構造が変わって中身が壊れたら、コミットせずに止める（前日の filmarks.js のまま残る）。
+      # GITHUB_TOKEN での push では test workflow が動かないので、ここで確かめる。
+      - name: Check data
+        run: node scripts/check-data.js
 
       - name: Commit if changed
         id: commit
