@@ -16,6 +16,10 @@
 
 `data.js` に新しいキーを足したら、`scripts/check-data.js` も合わせて直す（知らないキーはエラーにしている）。
 
+## 公開
+
+main に push すると `.github/workflows/deploy.yml` が、`scripts/build-site.js` の `FILES` にあるファイルだけを GitHub Pages に置く。ページが読むファイルを増やしたら `FILES` に足す（E2E も同じ公開物を配信するので、足し忘れると E2E が失敗する）。
+
 ## E2E
 
 E2E を書く、直す、足すか判断するときは、`e2e` スキル（[.claude/skills/e2e/SKILL.md](.claude/skills/e2e/SKILL.md)）に従う。

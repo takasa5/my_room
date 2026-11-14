@@ -7,9 +7,10 @@ const assert = require("node:assert/strict");
 const http = require("node:http");
 const fs = require("node:fs");
 const path = require("node:path");
+const os = require("node:os");
 const { chromium } = require("playwright-core");
+const { buildSite } = require("../scripts/build-site.js");
 
-const root = path.join(__dirname, "..");
 const outDir = path.join(__dirname, ".output");
 const TYPES = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".png": "image/png", ".svg": "image/svg+xml" };
 
@@ -23,7 +24,8 @@ const FAKE_BOOKS = [
 let server, base, browser;
 
 before(async () => {
-  // リポジトリのルートをそのまま配信する（Pages と同じ）
+  // デプロイと同じ公開物（scripts/build-site.js）を作って配信する。公開対象に足し忘れたファイルは 404 になって失敗する
+  const root = buildSite(fs.mkdtempSync(path.join(os.tmpdir(), "my_room-site-")));
   server = http.createServer((req, res) => {
     const p = decodeURIComponent(new URL(req.url, "http://x").pathname);
     const file = path.join(root, p === "/" ? "index.html" : p);

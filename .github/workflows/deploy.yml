@@ -1,0 +1,47 @@
+name: deploy
+
+# 公開するファイル（scripts/build-site.js の FILES）だけを GitHub Pages に置く。
+# リポジトリの設定で Pages の Source を「GitHub Actions」にしておく必要がある。
+on:
+  push:
+    branches: [main]
+  # filmarks.yml が filmarks.js を更新したあとに呼ぶ（GITHUB_TOKEN での push ではこの workflow が動かないため）
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# 公開中のデプロイは途中で止めず、順に置き換える
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 24
+      - run: node scripts/build-site.js _site
+      - uses: actions/upload-pages-artifact@v5.0.0
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5.0.1

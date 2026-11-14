@@ -9,7 +9,7 @@ on:
 
 permissions:
   contents: write   # filmarks.js をコミットする
-  pages: write      # 更新後に Pages の再ビルドを依頼する
+  actions: write    # 更新後に deploy workflow を動かす
 
 concurrency:
   group: filmarks
@@ -49,9 +49,9 @@ jobs:
           git push
           echo "changed=true" >> "$GITHUB_OUTPUT"
 
-      # GITHUB_TOKEN での push は Pages のビルドを起こさないことがあるので、明示的に依頼する
-      - name: Rebuild Pages
+      # GITHUB_TOKEN での push では deploy workflow が動かないので、明示的に動かす
+      - name: Deploy
         if: steps.commit.outputs.changed == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh api -X POST "repos/${{ github.repository }}/pages/builds"
+        run: gh workflow run deploy.yml --repo "${{ github.repository }}" --ref main
