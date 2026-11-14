@@ -1,0 +1,11 @@
+version: 2
+updates:
+  # uses: と actions.lock を一緒に更新する
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    # 侵害されたリリースは数日で見つかって取り下げられることが多いので、公開から 7 日待ってから取り込む。
+    # 脆弱性を直すセキュリティ更新は待たない。
+    cooldown:
+      default-days: 7
