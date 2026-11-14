@@ -58,7 +58,9 @@ window.ROOM_DATA = {
     poster: {
       furniture: "映画のポスター",
       title: "🎬 Movie",
-      links: [{ label: "Movie", url: "https://abstracted-lancer-5f0.notion.site/9ab4d8a8b82f454ebe987e7d19c9bf75" }]
+      links: [{ label: "Movie", url: "https://abstracted-lancer-5f0.notion.site/9ab4d8a8b82f454ebe987e7d19c9bf75" }],
+      // パネルに出す「最近観た映画」のポスター（Filmarks）。中身は filmarks.js（scripts/fetch-filmarks.mjs が生成）
+      filmarks: true
     },
     computer: {
       furniture: "パソコン",
