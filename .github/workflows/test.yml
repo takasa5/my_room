@@ -22,3 +22,25 @@ jobs:
         with:
           node-version: 24
       - run: node scripts/check-data.js
+
+  # index.html を Chromium で開いて、部屋が描けて小物を押すとパネルが開くかを確かめる。
+  # 外部への通信は全部差し替えるので、外部サイトの状態には左右されない。
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright-core install --with-deps chromium
+      - run: npm run e2e
+      - uses: actions/upload-artifact@v7.0.2
+        if: failure()
+        with:
+          name: e2e-screenshots
+          path: e2e/.output/

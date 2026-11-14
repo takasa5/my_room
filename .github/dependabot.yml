@@ -9,3 +9,10 @@ updates:
     # 脆弱性を直すセキュリティ更新は待たない。
     cooldown:
       default-days: 7
+  # e2e で使う playwright-core
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
