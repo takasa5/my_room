@@ -4,7 +4,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 
-const FILES = ["index.html", "data.js", "filmarks.js", "github.js", "posts.js", "scene.js", "social-preview.png"];
+const FILES = ["index.html", "data.js", "filmarks.js", "github.js", "posts.js", "diary.js", "scene.js", "social-preview.png"];
 
 function buildSite(outDir) {
   const root = path.join(__dirname, "..");

@@ -104,6 +104,27 @@
   .panel-body a.grass-note::before { content: none; }
   .panel-body .repos { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 14px; }
   .panel-body .repos img { width: 100%; aspect-ratio: 2 / 1; object-fit: cover; margin-top: 0; }
+  /* 日記帳は見開き（2 ページ）を並べるので、パネルを広げる */
+  dialog.wide { width: min(860px, calc(100vw - 32px)); }
+  .panel-body .diary { margin-top: 14px; }
+  .panel-body .spread { display: grid; grid-template-columns: 1fr 1fr; gap: 0; align-items: start; }
+  .panel-body .spread .leaf { display: block; border: none; border-radius: 0; padding: 0; position: relative; }
+  .panel-body .spread .leaf::before { content: none; }
+  /* 写真は縦横比が少しずつ違うので、全ページ同じ枠にそろえて少しだけ伸び縮みさせる（切り取らない） */
+  .panel-body .spread .leaf img { width: 100%; height: auto; object-fit: fill; margin-top: 0; border-radius: 0; background: var(--line); }
+  .panel-body .spread .leaf .ph { display: block; width: 100%; background: var(--line); opacity: .4; }
+  .panel-body .spread .leaf:first-child :is(img, .ph) { border-radius: 4px 0 0 4px; }
+  .panel-body .spread .leaf:last-child :is(img, .ph) { border-radius: 0 4px 4px 0; }
+  .panel-body .spread .leaf:hover img, .panel-body .spread .leaf:focus-visible img { outline: 1px solid var(--hot); outline-offset: -1px; }
+  .panel-body .spread .leaf .cap { display: block; font-size: 11px; color: var(--ink); margin-top: 4px; text-align: center; }
+  .panel-body .spread .leaf:hover .cap, .panel-body .spread .leaf:focus-visible .cap { color: var(--hot); }
+  .panel-body .diary-nav { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 10px; font-size: 12px; color: var(--ink); }
+  .panel-body .diary-nav button {
+    font: inherit; background: none; color: var(--ink-strong); cursor: pointer;
+    border: 1px solid var(--line); border-radius: 4px; padding: 6px 12px;
+  }
+  .panel-body .diary-nav button:hover:not(:disabled), .panel-body .diary-nav button:focus-visible { border-color: var(--hot); color: var(--hot); }
+  .panel-body .diary-nav button:disabled { opacity: .35; cursor: default; }
 
   /* ---- 部屋にあるもの: スクロールすると小物の寄りの AA と説明が順に現れる ---- */
   .things { width: 100%; max-width: 1200px; margin-top: 96px; }
@@ -157,10 +178,11 @@
 
   <footer>source: <a id="src" href="#" target="_blank" rel="noopener">Notion</a></footer>
 
-  <script src="data.js?v=16"></script>
+  <script src="data.js?v=17"></script>
   <script src="filmarks.js"></script>
   <script src="github.js"></script>
   <script src="posts.js"></script>
+  <script src="diary.js"></script>
   <script src="scene.js?v=22"></script>
   <script>
   (async function () {
@@ -269,6 +291,9 @@
         }));
         const extra = document.getElementById("panel-extra");
         extra.replaceChildren();
+        const di = it.diary && window.DIARY;        // diary.js が無い・空なら何も出さない
+        panel.classList.toggle("wide", !!(di && di.pages.length));
+        if (di && di.pages.length) extra.append(diaryPart(di));
         if (it.image) {
           const img = imageFor(it.image, it.imageSize);
           img.alt = "最近聴いた曲";
@@ -326,6 +351,54 @@
         }
         panel.showModal();
       }, PANEL_DELAY);
+    }
+
+    // 日記帳: 古い順に 1・2 枚目、3・4 枚目…を見開きで並べ、前後へめくる。最初は一番新しい見開きを開く。
+    // 写真は今の見開きと前後の見開きの分だけ読む（全部を一度には読まない）
+    let diarySpread = null;                    // 今開いている見開きの番号（パネルを閉じても覚えておく）
+    function diaryPart(di) {
+      const pages = di.pages, last = Math.ceil(pages.length / 2) - 1;
+      // めくってもパネルの高さが変わらないよう、全ページの縦横比（高さ÷幅）の平均を、どの写真の枠にも使う。
+      // 写真ごとの差は数 % なので、枠に合わせて少し伸び縮みさせても目立たない
+      const ratio = pages.reduce((sum, p) => sum + p.ratio, 0) / pages.length;
+      if (diarySpread === null || diarySpread > last) diarySpread = last;
+      const box = document.createElement("div"), spread = document.createElement("div"), nav = document.createElement("div");
+      box.className = "diary"; spread.className = "spread"; nav.className = "diary-nav";
+      const prev = document.createElement("button"), next = document.createElement("button"), where = document.createElement("span");
+      prev.type = next.type = "button";
+      prev.textContent = "< 前"; next.textContent = "次 >";
+      prev.setAttribute("aria-label", "前の見開き"); next.setAttribute("aria-label", "次の見開き");
+      where.setAttribute("aria-live", "polite");
+      nav.append(prev, where, next);
+      box.append(spread, nav);
+
+      const leaf = (p, ratio) => {
+        if (!p) { const blank = document.createElement("span"); blank.className = "leaf"; return blank; }
+        const a = document.createElement("a"), img = document.createElement("img"), cap = document.createElement("span");
+        a.href = p.url; a.target = "_blank"; a.rel = "noopener"; a.className = "leaf"; a.title = p.title;
+        img.src = p.image; img.alt = "日記 " + p.title;
+        img.style.aspectRatio = "1 / " + ratio;     // 写真の縦横比ではなく見開きの枠に合わせる（届くまでも同じ枠を取る）
+        cap.className = "cap"; cap.textContent = p.title;
+        img.addEventListener("error", () => {   // 写真が取れなければ同じ大きさの空の紙にする（リンクと題は残す）
+          const ph = document.createElement("span"); ph.className = "ph"; ph.style.aspectRatio = img.style.aspectRatio;
+          img.replaceWith(ph);
+        });
+        a.append(img, cap); return a;
+      };
+      const preload = (n) => [pages[n * 2], pages[n * 2 + 1]].forEach((p) => { if (p) new Image().src = p.image; });
+      function show(n) {
+        diarySpread = n;
+        spread.replaceChildren(leaf(pages[n * 2], ratio), leaf(pages[n * 2 + 1], ratio));
+        prev.disabled = n <= 0; next.disabled = n >= last;
+        where.textContent = `${n + 1} / ${last + 1}`;
+        if (n > 0) preload(n - 1);
+        if (n < last) preload(n + 1);
+      }
+      prev.addEventListener("click", () => { if (diarySpread > 0) show(diarySpread - 1); });
+      next.addEventListener("click", () => { if (diarySpread < last) show(diarySpread + 1); });
+      box.turn = (d) => (d < 0 ? prev : next).click();   // パネルの ← → から呼ぶ
+      show(diarySpread);
+      return box;
     }
 
     // GitHub の草（直近 gh.weeks 週）と、最近いじったリポジトリのカード画像（github.js）
@@ -430,6 +503,11 @@
     });
     document.getElementById("panel-close").addEventListener("click", () => panel.close());
     panel.addEventListener("click", (e) => { if (e.target === panel) panel.close(); });
+    panel.addEventListener("keydown", (e) => {        // 日記帳は ← → でもめくれる
+      const diary = panel.querySelector(".diary");
+      if (!diary || (e.key !== "ArrowLeft" && e.key !== "ArrowRight")) return;
+      e.preventDefault(); diary.turn(e.key === "ArrowLeft" ? -1 : 1);
+    });
 
     // ---- 部屋にあるもの（カード） ----------------------------------------
     const thingsEl = document.getElementById("things");
