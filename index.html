@@ -77,6 +77,12 @@
   .panel-body .covers { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 14px; }
   .panel-body .covers img { width: 100%; aspect-ratio: 2 / 3; object-fit: contain; margin-top: 0; }
   .panel-body .covers .ph { aspect-ratio: 2 / 3; border-radius: 4px; background: var(--line); opacity: .4; }
+  /* Notion の新しい投稿（日付・タグ・題名の一覧） */
+  .panel-body .posts { margin-top: 14px; gap: 0; }
+  .panel-body .posts a { border: none; border-bottom: 1px dashed var(--line); border-radius: 0; padding: 8px 2px; }
+  .panel-body .posts a::before { content: none; }
+  .panel-body .posts .meta { display: block; font-size: 11px; color: var(--ink); margin-bottom: 2px; }
+  .panel-body .posts a:hover .meta, .panel-body .posts a:focus-visible .meta { color: inherit; }
   /* GitHub の草（1 列 = 1 週、上が日曜）。濃さは 0〜4 の 5 段階 */
   .panel-body .grass { display: grid; grid-auto-flow: column; grid-template-rows: repeat(7, 1fr); gap: 2px; margin-top: 14px; }
   .panel-body .grass i { aspect-ratio: 1; border-radius: 1px; background: #262a33; }
@@ -141,9 +147,10 @@
 
   <footer>source: <a id="src" href="#" target="_blank" rel="noopener">Notion</a></footer>
 
-  <script src="data.js?v=15"></script>
+  <script src="data.js?v=16"></script>
   <script src="filmarks.js"></script>
   <script src="github.js"></script>
+  <script src="posts.js"></script>
   <script src="scene.js?v=22"></script>
   <script>
   (async function () {
@@ -293,6 +300,20 @@
         }
         const gh = it.github && window.GITHUB;      // github.js が無ければ何も出さない
         if (gh) extra.append(...githubParts(gh));
+        const po = it.posts && window.POSTS;        // posts.js が無い・空なら何も出さない
+        if (po && po.posts.length) {
+          const ul = document.createElement("ul");
+          ul.className = "posts";
+          ul.setAttribute("aria-label", "新しい投稿");
+          ul.replaceChildren(...po.posts.map((p) => {
+            const li = document.createElement("li"), a = document.createElement("a"), meta = document.createElement("span");
+            a.href = p.url; a.target = "_blank"; a.rel = "noopener";
+            meta.className = "meta"; meta.textContent = [p.date.replaceAll("-", "."), ...p.tags.map((t) => "#" + t)].join("  ");
+            a.append(meta, p.title);
+            li.append(a); return li;
+          }));
+          extra.append(ul);
+        }
         panel.showModal();
       }, PANEL_DELAY);
     }

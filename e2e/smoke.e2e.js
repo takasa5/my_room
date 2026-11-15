@@ -123,6 +123,15 @@ test("ポスターを押すと Filmarks のポスターが出る", () => withPag
   assert.equal(await panel.locator(".covers a.image-link").count(), works);
 }));
 
+test("紙の束を押すと Notion の新しい投稿が出る", () => withPage("papers", {}, async (page) => {
+  const posts = await page.evaluate(() => window.POSTS.posts);
+  const panel = await openPanel(page, "papers");
+  assert.deepEqual(
+    await panel.locator("ul.posts a").evaluateAll((as) => as.map((a) => a.href)),
+    posts.map((p) => p.url)
+  );
+}));
+
 test("パソコンを押すと GitHub の草とリポジトリのカードが出る", () => withPage("computer", {}, async (page) => {
   const gh = await page.evaluate(() => window.GITHUB);
   const panel = await openPanel(page, "computer");
