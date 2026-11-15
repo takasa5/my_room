@@ -33,7 +33,9 @@ window.ROOM_DATA = {
     papers: {
       furniture: "紙の束",
       title: "📮 Posts",
-      links: [{ label: "Posts", url: "https://abstracted-lancer-5f0.notion.site/eb09df3ad61a4adea8765eea005cacbe" }]
+      links: [{ label: "Posts", url: "https://abstracted-lancer-5f0.notion.site/eb09df3ad61a4adea8765eea005cacbe" }],
+      // パネルに出す「新しい投稿」。中身は posts.js（scripts/fetch-posts.mjs が生成）
+      posts: true
     },
     mug: {
       furniture: "マグカップ",

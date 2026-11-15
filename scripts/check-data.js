@@ -43,7 +43,7 @@ if (!isObj(data)) {
     for (const [id, it] of Object.entries(data.items)) {
       const w = `items.${id}`;
       if (!isObj(it)) { fail(w, "オブジェクトにする"); continue; }
-      checkKeys(w, it, ["furniture", "title", "links", "image", "imageSize", "imageLink", "booklog", "filmarks", "github"]);
+      checkKeys(w, it, ["furniture", "title", "links", "image", "imageSize", "imageLink", "booklog", "filmarks", "github", "posts"]);
 
       // 押しても反応しない家具にならないよう、scene.js に同じ id の家具があること
       if (!sceneIds.has(id)) fail(w, `scene.js に id "${id}" の家具がない`);
@@ -87,12 +87,14 @@ if (!isObj(data)) {
 
       if ("filmarks" in it && it.filmarks !== true) fail(`${w}.filmarks`, "true にする（使わないなら書かない）");
       if ("github" in it && it.github !== true) fail(`${w}.github`, "true にする（使わないなら書かない）");
+      if ("posts" in it && it.posts !== true) fail(`${w}.posts`, "true にする（使わないなら書かない）");
     }
 
     // filmarks.js は Actions がスクレイピングして作るので、中身の形もここで見る。
     // index.html は url / image をそのまま使うので https であること。
     if (Object.values(data.items).some((it) => isObj(it) && it.filmarks === true)) checkFilmarks();
     if (Object.values(data.items).some((it) => isObj(it) && it.github === true)) checkGithub();
+    if (Object.values(data.items).some((it) => isObj(it) && it.posts === true)) checkPosts();
   }
 }
 
@@ -135,6 +137,25 @@ function checkGithub() {
     if (!isText(r.name)) fail(`${rw}.name`, "空でない文字列にする");
     if (!isHttps(r.url)) fail(`${rw}.url`, "https:// の URL にする");
     if (!isHttps(r.image)) fail(`${rw}.image`, "https:// の URL にする");
+  });
+}
+
+// posts.js は Actions が公開 Notion サイトから作る。index.html は url をそのまま開き、date と tags を題名の上に出す
+function checkPosts() {
+  const file = path.join(root, "posts.js");
+  if (!fs.existsSync(file)) { fail("posts.js", "posts: true の項目があるのにファイルがない"); return; }
+  const sb = { window: {} };
+  vm.runInNewContext(fs.readFileSync(file, "utf8"), sb, { filename: "posts.js" });
+  const po = sb.window.POSTS;
+  if (!isObj(po) || !Array.isArray(po.posts)) { fail("posts.js", "window.POSTS.posts が配列になっていない"); return; }
+  if (!isHttps(po.url)) fail("POSTS.url", "https:// の URL にする");
+  po.posts.forEach((p, i) => {
+    const pw = `POSTS.posts[${i}]`;
+    if (!isObj(p)) { fail(pw, "オブジェクトにする"); return; }
+    if (!isText(p.title)) fail(`${pw}.title`, "空でない文字列にする");
+    if (!isHttps(p.url)) fail(`${pw}.url`, "https:// の URL にする");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(p.date)) fail(`${pw}.date`, "YYYY-MM-DD にする");
+    if (!Array.isArray(p.tags) || !p.tags.every(isText)) fail(`${pw}.tags`, "空でない文字列の配列にする");
   });
 }
 

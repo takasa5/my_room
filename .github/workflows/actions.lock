@@ -16,6 +16,9 @@ workflows:
     '.github/workflows/github.yml':
         - 'actions/checkout@v7.0.1'
         - 'actions/setup-node@v7.1.0'
+    '.github/workflows/posts.yml':
+        - 'actions/checkout@v7.0.1'
+        - 'actions/setup-node@v7.1.0'
     '.github/workflows/test.yml':
         - 'actions/checkout@v7.0.1'
         - 'actions/setup-node@v7.1.0'
