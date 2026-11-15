@@ -26,15 +26,19 @@
   const POSTER = "happy";
   const POSTER_TALL = { x0: 0.34, x1: 0.55, y0: 1.34, y1: 1.64 };   // モニター上端（1.27）から少し離す
 
-  // 日記帳のコラージュ。ページの範囲（ワールド座標）と、貼った切り抜き [u0, u1, v0, v1, 柄]
-  // u は左（リング側）→右、v は手前→奥（ページの下→上）
+  // 日記帳のコラージュ。見開きの左右のページ（ワールド座標の x 範囲）と、真ん中のリングの列。
+  // 切り抜きは [u0, u1, v0, v1, 柄]。u はそのページの左→右、v は手前→奥（ページの下→上）
   const SCRAP = {
-    x0: -0.31, x1: 0.1, z0: 0.05, z1: 0.32, rings: 13,
-    pieces: [
-      [0.08, 0.3, 0.72, 0.96, "poster"], [0.3, 0.52, 0.84, 0.96, "ticket"], [0.52, 0.61, 0.82, 0.96, "stamp"],
-      [0.61, 0.95, 0.55, 0.96, "wood"], [0.08, 0.3, 0.4, 0.72, "sea"], [0.3, 0.61, 0.55, 0.84, "text"],
-      [0.3, 0.95, 0.38, 0.55, "banner"], [0.08, 0.3, 0.2, 0.4, "diamond"], [0.3, 0.45, 0.2, 0.38, "photo"],
-      [0.45, 0.68, 0.06, 0.38, "ink"], [0.68, 0.9, 0.07, 0.38, "dots"], [0.08, 0.45, 0.04, 0.2, "ad"]
+    z0: 0.05, z1: 0.32, ringX: -0.105, rings: 10,
+    pages: [
+      { x0: -0.31, x1: -0.121, pieces: [
+        [0.05, 0.48, 0.68, 0.96, "poster"], [0.48, 0.88, 0.82, 0.96, "ticket"], [0.48, 0.88, 0.5, 0.82, "text"],
+        [0.05, 0.48, 0.3, 0.68, "sea"], [0.48, 0.88, 0.3, 0.5, "diamond"], [0.05, 0.88, 0.05, 0.3, "ad"]
+      ] },
+      { x0: -0.089, x1: 0.1, pieces: [
+        [0.12, 0.62, 0.55, 0.96, "wood"], [0.62, 0.95, 0.75, 0.96, "stamp"], [0.62, 0.95, 0.55, 0.75, "photo"],
+        [0.12, 0.95, 0.38, 0.55, "banner"], [0.12, 0.55, 0.07, 0.38, "ink"], [0.55, 0.95, 0.07, 0.38, "dots"]
+      ] }
     ]
   };
   // 切り抜きの柄。s, t は切り抜きの中の位置（0〜1、t は上ほど 1）
@@ -150,18 +154,20 @@
     // リングノートのクラフト紙のページに、チラシや切符の切り抜きを隙間なく貼ったコラージュ
     scrapbook(p, n) {
       if (n[1] < 0.5) return [0.9, 0.86, 0.76];                       // 紙の束の小口
-      const u = (p[0] - SCRAP.x0) / (SCRAP.x1 - SCRAP.x0), v = (p[2] - SCRAP.z0) / (SCRAP.z1 - SCRAP.z0);
-      const kraft = [0.66, 0.5, 0.33];
-      // リングを通す穴（左端に並ぶ）
-      if (u < 0.06 && Math.hypot((u - 0.03) * 1.5, frac(v * SCRAP.rings) - 0.5) < 0.22) return [0.12, 0.09, 0.07];
-      for (const [u0, u1, v0, v1, kind] of SCRAP.pieces) {
-        if (u < u0 + 0.004 || u > u1 - 0.004 || v < v0 + 0.006 || v > v1 - 0.006) continue;
+      const pg = p[0] < SCRAP.ringX ? SCRAP.pages[0] : SCRAP.pages[1];
+      const u = (p[0] - pg.x0) / (pg.x1 - pg.x0), v = (p[2] - SCRAP.z0) / (SCRAP.z1 - SCRAP.z0);
+      // リングを通す穴（のど側の端に並ぶ）
+      const step = (SCRAP.z1 - SCRAP.z0) / SCRAP.rings, hz = SCRAP.z0 + (Math.floor(v * SCRAP.rings) + 0.5) * step;
+      const hx = pg === SCRAP.pages[0] ? pg.x1 - 0.008 : pg.x0 + 0.008;
+      if (Math.hypot(p[0] - hx, p[2] - hz) < 0.0045) return [0.12, 0.09, 0.07];
+      for (const [u0, u1, v0, v1, kind] of pg.pieces) {
+        if (u < u0 + 0.008 || u > u1 - 0.008 || v < v0 + 0.006 || v > v1 - 0.006) continue;
         const s = (u - u0) / (u1 - u0), t = (v - v0) / (v1 - v0);
         return SCRAP_KIND[kind](s, t);
       }
-      // 右下に鉛筆で書いた年月
-      if (u > 0.8 && u < 0.94 && v > 0.012 && v < 0.05 && frac(u * 60) < 0.55) return [0.3, 0.27, 0.24];
-      return kraft;
+      // 右ページの右下に鉛筆で書いた年月
+      if (pg === SCRAP.pages[1] && u > 0.66 && u < 0.92 && v > 0.012 && v < 0.05 && frac(u * 30) < 0.55) return [0.3, 0.27, 0.24];
+      return [0.66, 0.5, 0.33];                                       // クラフト紙
     },
     keyboard(p, n) {
       if (n[1] < 0.5) return [0.2, 0.2, 0.22];
@@ -328,11 +334,13 @@
   C(-0.45, 0.2, 0.045, TOP, TOP + 0.11, M(null, { tex: tex.mug }), "mug");
   B(-0.405, TOP + 0.03, 0.195, -0.385, TOP + 0.08, 0.205, M([0.92, 0.9, 0.86]), "mug");
 
-  // 日記帳（Paper Diary）: クラフト紙の表紙のリングノート。開いたページはチラシや切符のコラージュ
+  // 日記帳（Paper Diary）: クラフト紙の表紙のリングノート。見開きのページはチラシや切符のコラージュ
   B(-0.33, TOP, 0.04, 0.11, TOP + 0.008, 0.33, M([0.5, 0.36, 0.22]), "diary");
-  B(SCRAP.x0, TOP + 0.008, SCRAP.z0, SCRAP.x1, TOP + 0.016, SCRAP.z1, M(null, { tex: tex.scrapbook }), "diary");
-  for (let i = 0; i < SCRAP.rings; i++) {                                               // 左端のリング
-    S(SCRAP.x0 - 0.004, TOP + 0.016, SCRAP.z0 + (i + 0.5) / SCRAP.rings * (SCRAP.z1 - SCRAP.z0), 0.0065, metal, "diary");
+  for (const pg of SCRAP.pages) B(pg.x0, TOP + 0.008, SCRAP.z0, pg.x1, TOP + 0.016, SCRAP.z1, M(null, { tex: tex.scrapbook }), "diary");
+  B(SCRAP.pages[0].x1, TOP + 0.008, SCRAP.z0, SCRAP.pages[1].x0, TOP + 0.0155, SCRAP.z1, M([0.03, 0.025, 0.02]), "diary");  // のどの影
+  const ring = M([0.8, 0.8, 0.82], { glow: [0.25, 0.25, 0.26] });                      // 影の中でも光って見えるように
+  for (let i = 0; i < SCRAP.rings; i++) {                                               // 真ん中のリング
+    S(SCRAP.ringX, TOP + 0.017, SCRAP.z0 + (i + 0.5) / SCRAP.rings * (SCRAP.z1 - SCRAP.z0), 0.006, ring, "diary");
   }
 
   // 携帯ゲーム機（Games）: スタンドで立てて画面をこちらに向けたテーブルモード。
