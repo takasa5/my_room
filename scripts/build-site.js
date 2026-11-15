@@ -1,10 +1,10 @@
 // 公開するファイルだけを 1 つのディレクトリに集める。デプロイ（.github/workflows/deploy.yml）と E2E の両方がこれを使う。
-// ページが読むファイルを増やしたら FILES に足す。足し忘れると E2E が失敗する。
+// ページが読むファイル（OGP の画像も含む）を増やしたら FILES に足す。足し忘れると E2E が失敗する。
 //   node scripts/build-site.js [出力先（既定は _site）]
 const fs = require("node:fs");
 const path = require("node:path");
 
-const FILES = ["index.html", "data.js", "filmarks.js", "github.js", "posts.js", "scene.js"];
+const FILES = ["index.html", "data.js", "filmarks.js", "github.js", "posts.js", "scene.js", "social-preview.png"];
 
 function buildSite(outDir) {
   const root = path.join(__dirname, "..");

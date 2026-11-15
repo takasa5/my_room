@@ -101,6 +101,13 @@ test("部屋が描け、すべての小物とカードがある", () => withPage
 
   const cards = await page.$$eval("#things a.card", (as) => as.map((a) => a.href));
   assert.deepEqual(cards, ids.map((id) => data.items[id].links[0].url), "カードのリンクが data.js と違う");
+
+  // OGP の画像はページが読まないので、公開物（FILES）に入っているかをここで見る
+  const og = await page.$eval('meta[property="og:image"]', (m) => m.content);
+  const url = await page.$eval('meta[property="og:url"]', (m) => m.content);
+  assert.ok(og.startsWith(url), "og:image が og:url の下にない");
+  const res = await page.request.get(base + og.slice(url.length));
+  assert.equal(res.status(), 200, `OGP の画像 ${og} が公開物にない`);
 }));
 
 test("本を押すとパネルが開き、ブクログの表紙が出て、閉じられる", () => withPage("books", {}, async (page) => {
