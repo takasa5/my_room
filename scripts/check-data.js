@@ -43,7 +43,7 @@ if (!isObj(data)) {
     for (const [id, it] of Object.entries(data.items)) {
       const w = `items.${id}`;
       if (!isObj(it)) { fail(w, "オブジェクトにする"); continue; }
-      checkKeys(w, it, ["furniture", "title", "links", "image", "imageSize", "imageLink", "booklog", "filmarks", "github", "posts"]);
+      checkKeys(w, it, ["furniture", "title", "links", "image", "imageSize", "imageLink", "booklog", "filmarks", "github", "posts", "diary"]);
 
       // 押しても反応しない家具にならないよう、scene.js に同じ id の家具があること
       if (!sceneIds.has(id)) fail(w, `scene.js に id "${id}" の家具がない`);
@@ -88,6 +88,7 @@ if (!isObj(data)) {
       if ("filmarks" in it && it.filmarks !== true) fail(`${w}.filmarks`, "true にする（使わないなら書かない）");
       if ("github" in it && it.github !== true) fail(`${w}.github`, "true にする（使わないなら書かない）");
       if ("posts" in it && it.posts !== true) fail(`${w}.posts`, "true にする（使わないなら書かない）");
+      if ("diary" in it && it.diary !== true) fail(`${w}.diary`, "true にする（使わないなら書かない）");
     }
 
     // filmarks.js は Actions がスクレイピングして作るので、中身の形もここで見る。
@@ -95,6 +96,7 @@ if (!isObj(data)) {
     if (Object.values(data.items).some((it) => isObj(it) && it.filmarks === true)) checkFilmarks();
     if (Object.values(data.items).some((it) => isObj(it) && it.github === true)) checkGithub();
     if (Object.values(data.items).some((it) => isObj(it) && it.posts === true)) checkPosts();
+    if (Object.values(data.items).some((it) => isObj(it) && it.diary === true)) checkDiary();
   }
 }
 
@@ -156,6 +158,28 @@ function checkPosts() {
     if (!isHttps(p.url)) fail(`${pw}.url`, "https:// の URL にする");
     if (!/^\d{4}-\d{2}-\d{2}$/.test(p.date)) fail(`${pw}.date`, "YYYY-MM-DD にする");
     if (!Array.isArray(p.tags) || !p.tags.every(isText)) fail(`${pw}.tags`, "空でない文字列の配列にする");
+  });
+}
+
+// diary.js は Actions が公開 Notion サイトから作る。index.html は古い順に 2 枚ずつ見開きで並べ、image を表示して url を開く
+function checkDiary() {
+  const file = path.join(root, "diary.js");
+  if (!fs.existsSync(file)) { fail("diary.js", "diary: true の項目があるのにファイルがない"); return; }
+  const sb = { window: {} };
+  vm.runInNewContext(fs.readFileSync(file, "utf8"), sb, { filename: "diary.js" });
+  const di = sb.window.DIARY;
+  if (!isObj(di) || !Array.isArray(di.pages)) { fail("diary.js", "window.DIARY.pages が配列になっていない"); return; }
+  if (!isHttps(di.url)) fail("DIARY.url", "https:// の URL にする");
+  di.pages.forEach((p, i) => {
+    const pw = `DIARY.pages[${i}]`;
+    if (!isObj(p)) { fail(pw, "オブジェクトにする"); return; }
+    checkKeys(pw, p, ["title", "url", "date", "image", "ratio"]);
+    if (!isText(p.title)) fail(`${pw}.title`, "空でない文字列にする");
+    if (!isHttps(p.url)) fail(`${pw}.url`, "https:// の URL にする");
+    if (!isHttps(p.image)) fail(`${pw}.image`, "https:// の URL にする");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(p.date)) fail(`${pw}.date`, "YYYY-MM-DD にする");
+    else if (i > 0 && isObj(di.pages[i - 1]) && di.pages[i - 1].date > p.date) fail(`${pw}.date`, "古い順に並べる（見開きの組がずれる）");
+    if (!(typeof p.ratio === "number" && p.ratio > 0 && p.ratio < 10)) fail(`${pw}.ratio`, "画像の高さ÷幅（正の数）にする");
   });
 }
 

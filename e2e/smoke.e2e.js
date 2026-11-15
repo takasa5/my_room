@@ -139,6 +139,39 @@ test("紙の束を押すと Notion の新しい投稿が出る", () => withPage(
   );
 }));
 
+test("日記帳を押すと一番新しい見開きが出て、前後にめくれる", () => withPage("diary", {}, async (page) => {
+  const pages = await page.evaluate(() => window.DIARY.pages);
+  const last = Math.ceil(pages.length / 2) - 1;
+  await page.evaluate(() => { window.DIARY.pages[0].ratio = 0.9; window.DIARY.pages[1].ratio = 1.1; });
+  const panel = await openPanel(page, "diary");
+  // n 番目の見開きは古い順の 2n・2n+1 枚目（奇数枚なら最後の見開きの右は空き）
+  const shows = async (n) => assert.deepEqual(
+    await panel.locator(".spread a.leaf").evaluateAll((as) => as.map((a) => a.href)),
+    pages.slice(n * 2, n * 2 + 2).map((p) => p.url)
+  );
+  await shows(last);
+  assert.ok(await panel.locator('button[aria-label="次の見開き"]').isDisabled());
+
+  await panel.locator('button[aria-label="前の見開き"]').click();
+  await shows(last - 1);
+  await page.keyboard.press("ArrowRight");
+  await shows(last);
+  for (let n = last; n > 0; n--) await page.keyboard.press("ArrowLeft");
+  await shows(0);
+  assert.ok(await panel.locator('button[aria-label="前の見開き"]').isDisabled());
+  // 写真の縦横比が違っても、めくって見開きの高さが変わらない（最初の 2 枚を縦横比の違うものにしてある）
+  const box = () => panel.locator(".spread").evaluate((el) => el.getBoundingClientRect().height);
+  const first = await box();
+  const heights = await panel.locator(".spread img").evaluateAll((ims) => ims.map((im) => im.getBoundingClientRect().height));
+  assert.ok(Math.abs(heights[0] - heights[1]) < 1, `左右の高さが違う: ${heights}`);
+  for (let n = 0; n < last; n++) await page.keyboard.press("ArrowRight");
+  assert.ok(Math.abs(await box() - first) < 1, "めくると見開きの高さが変わる");
+  for (let n = last; n > 0; n--) await page.keyboard.press("ArrowLeft");
+  // 写真が読めたあとも（失敗して空の紙にならずに）残っていること
+  await page.waitForFunction(() => [...document.querySelectorAll("#panel .spread img")].every((im) => im.complete));
+  assert.equal(await panel.locator(".spread img").count(), 2);
+}));
+
 test("パソコンを押すと GitHub の草とリポジトリのカードが出る", () => withPage("computer", {}, async (page) => {
   const gh = await page.evaluate(() => window.GITHUB);
   const panel = await openPanel(page, "computer");
@@ -172,6 +205,15 @@ test("外部が全部落ちていても、部屋が描けてパネルが開く",
   const gh = await openPanel(page, "computer");
   await page.waitForFunction(() => !document.querySelector("#panel .repos a"));
   assert.ok(await gh.locator(".grass i").count() > 0);
+
+  // 日記の写真が取れなくても、見開きの枠とリンクは残り、めくれる
+  await page.click("#panel-close");
+  await page.waitForSelector("#panel[open]", { state: "detached" });
+  const diary = await openPanel(page, "diary");
+  await page.waitForFunction(() => !document.querySelector("#panel .spread img"));
+  assert.ok(await diary.locator(".spread a.leaf .ph").count() > 0);
+  await diary.locator('button[aria-label="前の見開き"]').click();
+  assert.equal(await diary.locator(".spread a.leaf").count(), 2);
 }));
 
 test("スマホの幅でも横にはみ出さない", () => withPage("mobile", { viewport: { width: 375, height: 812 } }, async (page) => {

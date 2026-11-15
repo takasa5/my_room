@@ -74,7 +74,9 @@ window.ROOM_DATA = {
     diary: {
       furniture: "日記帳",
       title: "📓 Paper Diary",
-      links: [{ label: "Paper Diary", url: "https://abstracted-lancer-5f0.notion.site/18d8baf3c04b8062841fca772ac82592" }]
+      links: [{ label: "Paper Diary", url: "https://abstracted-lancer-5f0.notion.site/18d8baf3c04b8062841fca772ac82592" }],
+      // パネルに出す日記のページの写真（見開きで 2 枚ずつ、ページ送りできる）。中身は diary.js（scripts/fetch-diary.mjs が生成）
+      diary: true
     },
     poker: {
       furniture: "チップとカード",
