@@ -1,0 +1,121 @@
+# 外部サイトのデータ（filmarks.js・github.js・posts.js）を取り直して、まとめて 1 回だけコミット・デプロイする。
+# どれもブラウザから直接は読めない（API がない・トークンが要る・CORS）ので、ここで取得して静的ファイルとしてコミットする。
+#
+# 取得は取得先ごとに別の job で動かす。1 つが壊れても残りは更新し、壊れた job だけが赤くなる
+# （run 全体も失敗になり、どの取得先がなぜ失敗したかは run の Annotations に出る）。
+name: Update data
+
+on:
+  schedule:
+    - cron: "0 20 * * *"   # 毎日 5:00 JST
+  workflow_dispatch:        # Actions 画面から手動でも動かせる
+
+permissions:
+  contents: read
+
+# main への push がぶつからないよう、この workflow は 1 本ずつ動かす
+concurrency:
+  group: update-data
+  cancel-in-progress: false
+
+jobs:
+  fetch:
+    name: fetch (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false   # 1 つが失敗しても、ほかの取得先は止めない
+      matrix:
+        include:
+          - name: Filmarks
+            file: filmarks.js
+            run: node scripts/fetch-filmarks.mjs tks5 8
+          - name: GitHub
+            file: github.js
+            run: node scripts/fetch-github.mjs takasa5 4 26
+          - name: Posts
+            file: posts.js
+            run: node scripts/fetch-posts.mjs 5
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 24
+
+      # 失敗したら、スクリプトのエラー文を Annotation に出してから止める（ログ全体はこの step に残る）
+      - name: Fetch ${{ matrix.name }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}   # fetch-github.mjs が GraphQL API に使う
+          FETCH: ${{ matrix.run }}
+          NAME: ${{ matrix.name }}
+        run: |
+          if ! $FETCH 2> stderr.txt; then
+            cat stderr.txt >&2
+            msg=$(grep -m1 -E '^[A-Za-z]*Error' stderr.txt || echo "ログを見てください")
+            echo "::error title=${NAME} の取得に失敗::${msg}"
+            exit 1
+          fi
+
+      # 取れた中身の形が壊れていたら、ここで止める（前日のファイルのまま残る）
+      - name: Check data
+        run: node scripts/check-data.js
+
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: data-${{ matrix.file }}
+          path: ${{ matrix.file }}
+          retention-days: 1
+
+  commit:
+    needs: fetch
+    # 一部の取得先が失敗しても、取れた分はコミットする
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write   # データをコミットする
+      actions: write    # 更新後に deploy workflow を動かす
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 24
+
+      # 成功した取得先のファイルだけが届く（失敗した分は前日のファイルのまま）
+      - uses: actions/download-artifact@v8.0.2
+        with:
+          pattern: data-*
+          merge-multiple: true
+          path: .
+
+      - name: Check data
+        run: node scripts/check-data.js
+
+      - name: Commit if changed
+        id: commit
+        run: |
+          files="filmarks.js github.js posts.js"
+          if git diff --quiet -- $files; then
+            echo "変更なし"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          changed=$(git diff --name-only -- $files | tr '\n' ' ')
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add $files
+          git commit -m "外部サイトのデータを更新（${changed% }）"
+          git push
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          echo "更新: ${changed}" >> "$GITHUB_STEP_SUMMARY"
+
+      # GITHUB_TOKEN での push では deploy workflow が動かないので、明示的に動かす（テストを通ってから公開される）
+      - name: Deploy
+        if: steps.commit.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run deploy.yml --repo "${{ github.repository }}" --ref main

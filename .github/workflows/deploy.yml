@@ -1,11 +1,11 @@
 name: deploy
 
-# 公開するファイル（scripts/build-site.js の FILES）だけを GitHub Pages に置く。
+# テスト（test.yml）が通ったら、公開するファイル（scripts/build-site.js の FILES）だけを GitHub Pages に置く。
 # リポジトリの設定で Pages の Source を「GitHub Actions」にしておく必要がある。
 on:
   push:
     branches: [main]
-  # filmarks.yml・github.yml・posts.yml がデータを更新したあとに呼ぶ（GITHUB_TOKEN での push ではこの workflow が動かないため）
+  # update-data.yml がデータを更新したあとに呼ぶ（GITHUB_TOKEN での push ではこの workflow が動かないため）
   workflow_dispatch:
 
 permissions:
@@ -17,7 +17,11 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  test:
+    uses: ./.github/workflows/test.yml
+
   build:
+    needs: test
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

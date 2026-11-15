@@ -1,9 +1,9 @@
 name: test
 
+# main への push では deploy.yml がこの workflow を呼び、通ったときだけ公開する
 on:
-  push:
-    branches: [main]
   pull_request:
+  workflow_call:
 
 # action が動くので、トークンは読むだけにする。
 permissions:

@@ -3,9 +3,9 @@
 自己紹介ページ（Notion）への入口になる静的サイト。GitHub Pages で公開している。
 
 * `index.html`：画面と操作。`scene.js`：部屋を文字の点描で描く。`data.js`：小物と Notion ページの対応表
-* `filmarks.js` は `scripts/fetch-filmarks.mjs` が作る（`.github/workflows/filmarks.yml` が毎日更新する）。手で書き換えない
-* `github.js` は `scripts/fetch-github.mjs` が作る（`.github/workflows/github.yml` が毎日更新する）。手で書き換えない
-* `posts.js` は `scripts/fetch-posts.mjs` が公開 Notion サイトから作る（`.github/workflows/posts.yml` が毎日更新する）。手で書き換えない
+* `filmarks.js` は `scripts/fetch-filmarks.mjs` が作る（`.github/workflows/update-data.yml` が毎日更新する）。手で書き換えない
+* `github.js` は `scripts/fetch-github.mjs` が作る（`.github/workflows/update-data.yml` が毎日更新する）。手で書き換えない
+* `posts.js` は `scripts/fetch-posts.mjs` が公開 Notion サイトから作る（`.github/workflows/update-data.yml` が毎日更新する）。手で書き換えない
 
 ## 確認
 
@@ -14,13 +14,13 @@
 | `npm run check` | `data.js`・`filmarks.js`・`github.js`・`posts.js` の形を確かめる（`scripts/check-data.js`）。ブラウザも外部への通信も使わない |
 | `npm run e2e` | `index.html` を Chromium で開き、画面の主な流れを確かめる（`e2e/`） |
 
-どちらも CI（`.github/workflows/test.yml`）で動く。初回は `npm ci` と `npx playwright-core install chromium` が必要。
+どちらも CI（`.github/workflows/test.yml`）で動く。PR で動き、main では `deploy.yml` が公開の前に呼ぶ（通らなければ公開しない）。初回は `npm ci` と `npx playwright-core install chromium` が必要。
 
 `data.js` に新しいキーを足したら、`scripts/check-data.js` も合わせて直す（知らないキーはエラーにしている）。
 
 ## 公開
 
-main に push すると `.github/workflows/deploy.yml` が、`scripts/build-site.js` の `FILES` にあるファイルだけを GitHub Pages に置く。ページが読むファイルを増やしたら `FILES` に足す（E2E も同じ公開物を配信するので、足し忘れると E2E が失敗する）。
+main に push すると `.github/workflows/deploy.yml` が、テストを通したうえで `scripts/build-site.js` の `FILES` にあるファイルだけを GitHub Pages に置く。ページが読むファイルを増やしたら `FILES` に足す（E2E も同じ公開物を配信するので、足し忘れると E2E が失敗する）。
 
 ## E2E
 
