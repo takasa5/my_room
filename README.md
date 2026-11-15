@@ -1,3 +1,3 @@
 # my_room
 
-![](screenshot.png)
+![](social-preview.png)
