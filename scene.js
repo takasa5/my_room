@@ -205,7 +205,7 @@
     // 目覚まし時計: カメラの方を向いた側だけ白い文字盤（目盛りと針）、ほかは本体の色
     clock(p, n) {
       const v = [p[0] - CLOCK.x, p[1] - CLOCK.y, p[2] - CLOCK.z];
-      if (n[0] * CLOCK_FACE.d[0] + n[1] * CLOCK_FACE.d[1] + n[2] * CLOCK_FACE.d[2] < 0.74) return [0.36, 0.58, 0.52];
+      if (n[0] * CLOCK_FACE.d[0] + n[1] * CLOCK_FACE.d[1] + n[2] * CLOCK_FACE.d[2] < 0.74) return [0.78, 0.16, 0.13];
       // 文字盤の中の位置（半径 1 で、u は右、w は上）
       const u = (v[0] * CLOCK_FACE.right[0] + v[1] * CLOCK_FACE.right[1] + v[2] * CLOCK_FACE.right[2]) / CLOCK.r;
       const w = (v[0] * CLOCK_FACE.up[0] + v[1] * CLOCK_FACE.up[1] + v[2] * CLOCK_FACE.up[2]) / CLOCK.r;
@@ -432,7 +432,7 @@
   B(1.0, TOP + 0.006, 0.19, 1.02, TOP + 0.0065, 0.21, M([0.8, 0.15, 0.12]), "poker");
 
   // 目覚まし時計（Sleep）: 丸い本体、上に 2 つのベルとその間のハンマー、下に 2 本の脚
-  const clockBody = M([0.36, 0.58, 0.52], { glow: [0.03, 0.05, 0.045] });
+  const clockBody = M([0.78, 0.16, 0.13], { glow: [0.1, 0.02, 0.015] });
   S(CLOCK.x, CLOCK.y, CLOCK.z, CLOCK.r, M(null, { tex: tex.clock, selfLit: 0.35 }), "clock");
   for (const sx of [-1, 1]) {
     const a = 0.62;                                                       // ベルの傾き（ラジアン）

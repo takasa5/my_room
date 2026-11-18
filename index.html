@@ -493,10 +493,13 @@
         <div class="readout"><span class="now"></span><span>last ${sl.weeks} weeks</span></div>`;
       const svg = box.querySelector("svg"), out = box.querySelector(".now");
 
-      // 縦軸: 上が夜、下が朝。記録のある時刻が収まるよう 2 時間刻みで広げる（少なくとも 23 時〜翌 9 時）
+      // 縦軸: 上が夜、下が朝。95% の晩が収まるよう偶数時の 2 時間刻みで広げる（少なくとも 22 時〜翌 10 時）。
+      // 数晩だけの外れ（昼過ぎまで寝ていた日など）で軸が伸びないよう、はみ出した分はグラフの枠で切る。
+      // 目盛りの文字は 4 時間おき（0:00・4:00・8:00…）
       const all = nights.filter((n) => !n.missing);
-      const Y0 = Math.min(23 * 60, Math.floor(Math.min(...all.map((n) => n.bed)) / 120) * 120);
-      const Y1 = Math.max(33 * 60, Math.ceil(Math.max(...all.map((n) => n.wake)) / 120) * 120);
+      const pct = (xs, p) => xs.sort((a, b) => a - b)[Math.min(xs.length - 1, Math.floor(xs.length * p))];
+      const Y0 = Math.min(22 * 60, Math.floor(pct(all.map((n) => n.bed), 0.05) / 120) * 120);
+      const Y1 = Math.max(34 * 60, Math.ceil(pct(all.map((n) => n.wake), 0.95) / 120) * 120);
       let geo = null;
       function draw() {
         const W = Math.round(svg.clientWidth); if (!W || (geo && geo.W === W)) return;
@@ -505,14 +508,16 @@
         const step = (W - L - R) / nights.length, x = (i) => L + (i + 0.5) * step, f = (v) => v.toFixed(1);
         geo = { W, H, T, B, L, step, x, y, f };
         let s = `<defs><linearGradient id="sleep-aurora" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stop-color="#7f9cc9" stop-opacity=".6"/><stop offset=".55" stop-color="#a99bb4" stop-opacity=".35"/><stop offset="1" stop-color="#f2b45a" stop-opacity=".5"/></linearGradient></defs>`;
+          <stop offset="0" stop-color="#7f9cc9" stop-opacity=".6"/><stop offset=".55" stop-color="#a99bb4" stop-opacity=".35"/><stop offset="1" stop-color="#f2b45a" stop-opacity=".5"/></linearGradient>
+          <clipPath id="sleep-plot"><rect x="${L}" y="${T}" width="${W - L - R}" height="${H - T - B}"/></clipPath></defs>`;
         for (let m = Y0; m <= Y1; m += 120) {
           s += `<line x1="${L}" x2="${W - R}" y1="${f(y(m))}" y2="${f(y(m))}" stroke="#262a33"/>`;
-          if (m % 240 === 0 || m === Y0) s += `<text x="${L - 6}" y="${f(y(m) + 3)}" font-size="9" fill="#6b7382" text-anchor="end">${clock(m)}</text>`;
+          if (m % 240 === 0) s += `<text x="${L - 6}" y="${f(y(m) + 3)}" font-size="9" fill="#6b7382" text-anchor="end">${clock(m)}</text>`;
         }
         nights.forEach((n, i) => {
           if (n.date.getUTCDate() === 1) s += `<line x1="${f(x(i))}" x2="${f(x(i))}" y1="${T}" y2="${H - B}" stroke="#262a33" stroke-dasharray="2 3"/><text x="${f(x(i) + 3)}" y="${H - 6}" font-size="9" fill="#6b7382">${MON[n.date.getUTCMonth()]}</text>`;
         });
+        s += `<g clip-path="url(#sleep-plot)">`;
         // 毎晩の記録は背景にかすかに
         nights.forEach((n, i) => { if (!n.missing) s += `<line x1="${f(x(i))}" x2="${f(x(i))}" y1="${f(y(n.bed))}" y2="${f(y(n.wake))}" stroke="#c9ced8" stroke-opacity=".09" stroke-width="${Math.max(step * 0.8, 0.8).toFixed(2)}"/>`; });
         // リボンは区間ごと。1 晩だけの区間は細い柱にする
@@ -529,6 +534,7 @@
           for (const [arr, color] of [[bedAvg, "var(--night)"], [wakeAvg, "var(--hot)"]])
             s += `<line class="gap" x1="${f(x(a))}" y1="${f(y(arr[a]))}" x2="${f(x(b))}" y2="${f(y(arr[b]))}" stroke="${color}" stroke-dasharray="1.5 2.5" stroke-opacity=".7"/>`;
         }
+        s += `</g>`;
         nights.forEach((n, i) => { if (n.missing && i > runs[0][0]) s += `<path d="M${f(x(i) - 2)} ${H - B + 6}L${f(x(i) + 2)} ${H - B + 6}L${f(x(i))} ${H - B + 2.5}Z" fill="#6b7382"/>`; });
         svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
         svg.innerHTML = s + `<g class="hover"></g>`;
