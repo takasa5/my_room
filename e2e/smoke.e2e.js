@@ -99,8 +99,9 @@ test("部屋が描け、すべての小物とカードがある", () => withPage
   // 見えている小物を押せるように、data.js の全項目が絵の中にあること
   assert.deepEqual(drawn.sort(), [...ids].sort(), "絵の中に出ていない小物がある");
 
-  const cards = await page.$$eval("#things a.card", (as) => as.map((a) => a.href));
-  assert.deepEqual(cards, ids.map((id) => data.items[id].links[0].url), "カードのリンクが data.js と違う");
+  // links のある小物はリンク、ない小物（目覚まし時計）はパネルを開くボタン
+  const cards = await page.$$eval("#things .card", (els) => els.map((el) => (el.tagName === "A" ? el.href : null)));
+  assert.deepEqual(cards, ids.map((id) => data.items[id].links?.[0].url ?? null), "カードのリンクが data.js と違う");
 
   // OGP の画像はページが読まないので、公開物（FILES）に入っているかをここで見る
   const og = await page.$eval('meta[property="og:image"]', (m) => m.content);
@@ -183,6 +184,38 @@ test("パソコンを押すと GitHub の草とリポジトリのカードが出
     await panel.locator(".repos a.image-link").evaluateAll((as) => as.map((a) => a.href)),
     gh.repos.map((r) => r.url)
   );
+}));
+
+test("目覚まし時計を押すと睡眠のリボンが出て、触った晩の時刻が読める", () => withPage("clock", {}, async (page) => {
+  // 記録のない晩をはさみ、リボンが切れて点線でつながることも見る
+  const sl = await page.evaluate(() => {
+    const n = window.SLEEP.nights, i = n.length - 10;
+    n[i - 1] = n[i - 1] || [1500, 1920, 390]; n[i] = null; n[i + 1] = n[i + 1] || [1500, 1920, 390];
+    return window.SLEEP;
+  });
+  const runs = sl.nights.reduce((r, v, i) => r + (v && !sl.nights[i - 1] ? 1 : 0), 0);
+  const panel = await openPanel(page, "clock");
+  await panel.locator(".sleep svg .ribbon").first().waitFor();
+  assert.equal(await panel.locator(".sleep svg .ribbon").count(), runs, "記録のない晩でリボンが切れていない");
+  assert.equal(await panel.locator(".sleep svg .gap").count(), (runs - 1) * 2, "切れ目が点線でつながっていない");
+  assert.match(await panel.locator(".stats").textContent(), /Bedtime\s*\d+:\d\d.*Wake-up\s*\d+:\d\d.*Time asleep\s*\d+h \d\dm/s);
+
+  // 最初はいちばん新しい記録の晩。記録のない晩に触ると「no record」
+  const last = sl.nights.length - 1 - [...sl.nights].reverse().findIndex(Boolean);
+  const day = (i) => { const d = new Date(Date.parse(sl.start) + i * 864e5); return `${d.getUTCMonth() + 1}/${d.getUTCDate()} `; };
+  assert.ok((await panel.locator(".readout .now").textContent()).startsWith(day(last)));
+  const box = await panel.locator(".sleep svg").boundingBox();
+  const vb = await panel.locator(".sleep svg").evaluate((el) => el.viewBox.baseVal.width);
+  const L = 34, R = 6, gap = sl.nights.length - 10;
+  await page.mouse.move(box.x + (L + (gap + 0.5) * (vb - L - R) / sl.nights.length) * box.width / vb, box.y + box.height / 2);
+  assert.match(await panel.locator(".readout .now").textContent(), new RegExp(`^${day(gap)}.*no record`));
+
+  // リンク先のない小物は、一覧のカードを押してもパネルが開く
+  await page.click("#panel-close");
+  await page.waitForSelector("#panel[open]", { state: "detached" });
+  await page.locator("#things button.card").first().click();
+  await page.waitForSelector("#panel[open] .sleep");
+  assert.equal(await panel.locator("#panel-links a").count(), 0);
 }));
 
 test("ヘッドホンを押すと last.fm の画像が出る", () => withPage("audio", {}, async (page) => {

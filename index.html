@@ -23,7 +23,7 @@
   :root {
     color-scheme: dark;
     --bg: #15171c; --ink: #6b7382; --ink-strong: #c9ced8; --hot: #f2b45a;
-    --panel: #1d2027; --line: #343a45;
+    --panel: #1d2027; --line: #343a45; --night: #7f9cc9;
   }
 
   * { box-sizing: border-box; }
@@ -104,6 +104,23 @@
   .panel-body a.grass-note::before { content: none; }
   .panel-body .repos { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 14px; }
   .panel-body .repos img { width: 100%; aspect-ratio: 2 / 1; object-fit: cover; margin-top: 0; }
+  /* 睡眠（目覚まし時計）: 直近 4 週の平均と、直近 26 週の入眠〜起床のリボン */
+  .panel-body .sleep { margin-top: 4px; }
+  .panel-body .sleep .stats { display: grid; grid-template-columns: repeat(3, auto) 1fr; column-gap: 20px; align-items: end; margin-bottom: 10px; }
+  .panel-body .sleep .stats div { display: flex; flex-direction: column; gap: 2px; }
+  .panel-body .sleep .stats small { font-size: 10px; color: var(--ink); letter-spacing: .04em; }
+  .panel-body .sleep .stats b { font-size: 16px; }
+  .panel-body .sleep .stats .bed b { color: var(--night); }
+  .panel-body .sleep .stats .wake b { color: var(--hot); }
+  .panel-body .sleep .stats .span { font-size: 10px; color: var(--ink); text-align: right; }
+  /* 長さ（7h 01m）は単位だけ小さく灰色にして、時刻（1:27）と見分けられるようにする */
+  .panel-body .sleep .u { font-size: .68em; font-weight: 400; color: var(--ink); margin-left: 1px; }
+  .panel-body .sleep svg { display: block; width: 100%; height: auto; overflow: visible; touch-action: pan-y; }
+  .panel-body .sleep svg text { font-family: inherit; }
+  .panel-body .sleep .readout { font-size: 11px; color: var(--ink); margin-top: 6px; display: flex; justify-content: space-between; gap: 8px; }
+  .panel-body .sleep .readout .now { color: var(--ink-strong); white-space: nowrap; }
+  .panel-body .sleep .readout .now.none { color: var(--ink); }
+  .panel-body .sleep .readout .u { font-size: .85em; }
   /* 日記帳は見開き（2 ページ）を並べるので、パネルを広げる */
   dialog.wide { width: min(860px, calc(100vw - 32px)); }
   .panel-body .diary { margin-top: 14px; }
@@ -144,10 +161,12 @@
   }
   .thing .kind { font-size: 11px; color: var(--ink); margin: 0; }
   .thing h3 { font-size: 15px; margin: 4px 0 8px; font-weight: 700; }
-  .thing a.card { display: block; height: 100%; color: inherit; text-decoration: none; }
-  .thing a.card:hover h3, .thing a.card:focus-visible h3 { color: var(--hot); }
-  .thing a.card:hover pre.crop { filter: brightness(1.25); }
-  .thing a.card:focus-visible { outline: 1px solid var(--hot); outline-offset: 8px; }
+  .thing .card { display: block; height: 100%; color: inherit; text-decoration: none; }
+  /* リンク先のない小物のカードは、押すとパネルを開くボタン */
+  .thing button.card { font: inherit; background: none; border: 0; padding: 0; width: 100%; text-align: left; cursor: pointer; }
+  .thing .card:hover h3, .thing .card:focus-visible h3 { color: var(--hot); }
+  .thing .card:hover pre.crop { filter: brightness(1.25); }
+  .thing .card:focus-visible { outline: 1px solid var(--hot); outline-offset: 8px; }
   @media (prefers-reduced-motion: reduce) { .thing { transition: none; opacity: 1; transform: none; } }
 
   footer { margin-top: 28px; font-size: 11px; color: var(--ink); }
@@ -183,7 +202,8 @@
   <script src="github.js"></script>
   <script src="posts.js"></script>
   <script src="diary.js"></script>
-  <script src="scene.js?v=22"></script>
+  <script src="sleep.js"></script>
+  <script src="scene.js?v=23"></script>
   <script>
   (async function () {
     const data = window.ROOM_DATA;
@@ -284,7 +304,7 @@
       setTimeout(() => {
         document.getElementById("panel-kind").textContent = it.furniture;
         document.getElementById("panel-title").textContent = it.title;
-        document.getElementById("panel-links").replaceChildren(...it.links.map((l) => {
+        document.getElementById("panel-links").replaceChildren(...(it.links || []).map((l) => {
           const li = document.createElement("li"), a = document.createElement("a");
           a.href = l.url; a.target = "_blank"; a.rel = "noopener"; a.textContent = l.label;
           li.append(a); return li;
@@ -336,6 +356,8 @@
         const gh = it.github && window.GITHUB;      // github.js が無ければ何も出さない
         if (gh) extra.append(...githubParts(gh));
         const po = it.posts && window.POSTS;        // posts.js が無い・空なら何も出さない
+        const sl = it.sleep && window.SLEEP;       // sleep.js が無い・記録が 1 晩もなければ何も出さない
+        if (sl && sl.nights.some(Boolean)) extra.append(sleepPart(sl));
         if (po && po.posts.length) {
           const ul = document.createElement("ul");
           ul.className = "posts";
@@ -435,6 +457,104 @@
       return parts;
     }
 
+    // 睡眠: 直近 4 週の平均（入眠・起床・睡眠時間）と、直近 sl.weeks 週の「入眠〜起床」を 7 晩の平均でつないだリボン（sleep.js）。
+    // 記録のない晩はリボンを切って前後を点線でつなぎ、軸の下に ▴ を付ける。グラフに触るとその晩の時刻が下に出る
+    function sleepPart(sl) {
+      const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+      const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      // nights[i] は start から i 日目の夜。[入眠, 起床, 睡眠時間]（分。入眠・起床はその夜の日付の 0:00 から数える）か null
+      const nights = sl.nights.map((v, i) => {
+        const date = new Date(Date.parse(sl.start + "T00:00:00Z") + i * 864e5);
+        return v ? { date, bed: v[0], wake: v[1], asleep: v[2] } : { date, missing: true };
+      });
+      const clock = (m) => { m = ((Math.round(m) % 1440) + 1440) % 1440; return `${Math.floor(m / 60)}:${String(m % 60).padStart(2, "0")}`; };
+      const dur = (m) => { m = Math.round(m); return `${Math.floor(m / 60)}<small class="u">h</small> ${String(m % 60).padStart(2, "0")}<small class="u">m</small>`; };
+      const nightOf = (n) => `${n.date.getUTCMonth() + 1}/${n.date.getUTCDate()} ${DOW[n.date.getUTCDay()]}`;
+      const avg7 = (key) => nights.map((n, i) => {
+        if (n.missing) return null;
+        const xs = nights.slice(Math.max(0, i - 6), i + 1).filter((m) => !m.missing);
+        return xs.reduce((s, m) => s + m[key], 0) / xs.length;
+      });
+      const bedAvg = avg7("bed"), wakeAvg = avg7("wake");
+      const runs = [];                          // 続けて記録のある区間 [最初, 最後]
+      nights.forEach((n, i) => { if (n.missing) return; const r = runs[runs.length - 1]; if (r && r[1] === i - 1) r[1] = i; else runs.push([i, i]); });
+      const recent = nights.slice(-28).filter((n) => !n.missing);
+      const mean = (k) => recent.reduce((s, n) => s + n[k], 0) / recent.length;
+      const lastI = runs[runs.length - 1][1];
+
+      const box = document.createElement("div");
+      box.className = "sleep";
+      box.innerHTML = (recent.length ? `<div class="stats">
+          <div class="bed"><small>Bedtime</small><b>${clock(mean("bed"))}</b></div>
+          <div class="wake"><small>Wake-up</small><b>${clock(mean("wake"))}</b></div>
+          <div><small>Time asleep</small><b>${dur(mean("asleep"))}</b></div>
+          <span class="span">avg · 4 weeks</span></div>` : "") +
+        `<svg role="img" aria-label="直近 ${sl.weeks} 週の入眠と起床の時刻"></svg>
+        <div class="readout"><span class="now"></span><span>last ${sl.weeks} weeks</span></div>`;
+      const svg = box.querySelector("svg"), out = box.querySelector(".now");
+
+      // 縦軸: 上が夜、下が朝。記録のある時刻が収まるよう 2 時間刻みで広げる（少なくとも 23 時〜翌 9 時）
+      const all = nights.filter((n) => !n.missing);
+      const Y0 = Math.min(23 * 60, Math.floor(Math.min(...all.map((n) => n.bed)) / 120) * 120);
+      const Y1 = Math.max(33 * 60, Math.ceil(Math.max(...all.map((n) => n.wake)) / 120) * 120);
+      let geo = null;
+      function draw() {
+        const W = Math.round(svg.clientWidth); if (!W || (geo && geo.W === W)) return;
+        const H = Math.round(W * 0.54), L = 34, R = 6, T = 6, B = 26;
+        const y = (m) => T + ((m - Y0) / (Y1 - Y0)) * (H - T - B);
+        const step = (W - L - R) / nights.length, x = (i) => L + (i + 0.5) * step, f = (v) => v.toFixed(1);
+        geo = { W, H, T, B, L, step, x, y, f };
+        let s = `<defs><linearGradient id="sleep-aurora" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#7f9cc9" stop-opacity=".6"/><stop offset=".55" stop-color="#a99bb4" stop-opacity=".35"/><stop offset="1" stop-color="#f2b45a" stop-opacity=".5"/></linearGradient></defs>`;
+        for (let m = Y0; m <= Y1; m += 120) {
+          s += `<line x1="${L}" x2="${W - R}" y1="${f(y(m))}" y2="${f(y(m))}" stroke="#262a33"/>`;
+          if (m % 240 === 0 || m === Y0) s += `<text x="${L - 6}" y="${f(y(m) + 3)}" font-size="9" fill="#6b7382" text-anchor="end">${clock(m)}</text>`;
+        }
+        nights.forEach((n, i) => {
+          if (n.date.getUTCDate() === 1) s += `<line x1="${f(x(i))}" x2="${f(x(i))}" y1="${T}" y2="${H - B}" stroke="#262a33" stroke-dasharray="2 3"/><text x="${f(x(i) + 3)}" y="${H - 6}" font-size="9" fill="#6b7382">${MON[n.date.getUTCMonth()]}</text>`;
+        });
+        // 毎晩の記録は背景にかすかに
+        nights.forEach((n, i) => { if (!n.missing) s += `<line x1="${f(x(i))}" x2="${f(x(i))}" y1="${f(y(n.bed))}" y2="${f(y(n.wake))}" stroke="#c9ced8" stroke-opacity=".09" stroke-width="${Math.max(step * 0.8, 0.8).toFixed(2)}"/>`; });
+        // リボンは区間ごと。1 晩だけの区間は細い柱にする
+        for (const [a, b] of runs) {
+          const top = [], bot = [];
+          for (let i = a; i <= b; i++) { top.push([x(i), y(bedAvg[i])]); bot.push([x(i), y(wakeAvg[i])]); }
+          if (a === b) for (const e of [top, bot]) e.splice(0, 1, [e[0][0] - step * 0.4, e[0][1]], [e[0][0] + step * 0.4, e[0][1]]);
+          const pts = (arr) => arr.map((p) => f(p[0]) + " " + f(p[1])).join("L");
+          s += `<path class="ribbon" d="M${pts([...top, ...[...bot].reverse()])}Z" fill="url(#sleep-aurora)"/>` +
+            `<path d="M${pts(top)}" stroke="var(--night)" stroke-width="1" fill="none"/><path d="M${pts(bot)}" stroke="var(--hot)" stroke-width="1" fill="none"/>`;
+        }
+        for (let k = 1; k < runs.length; k++) {
+          const a = runs[k - 1][1], b = runs[k][0];
+          for (const [arr, color] of [[bedAvg, "var(--night)"], [wakeAvg, "var(--hot)"]])
+            s += `<line class="gap" x1="${f(x(a))}" y1="${f(y(arr[a]))}" x2="${f(x(b))}" y2="${f(y(arr[b]))}" stroke="${color}" stroke-dasharray="1.5 2.5" stroke-opacity=".7"/>`;
+        }
+        nights.forEach((n, i) => { if (n.missing && i > runs[0][0]) s += `<path d="M${f(x(i) - 2)} ${H - B + 6}L${f(x(i) + 2)} ${H - B + 6}L${f(x(i))} ${H - B + 2.5}Z" fill="#6b7382"/>`; });
+        svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+        svg.innerHTML = s + `<g class="hover"></g>`;
+        show(lastI);
+      }
+      function show(i) {
+        if (!geo) return;
+        const n = nights[i], { T, H, B, step, x, y, f } = geo;
+        svg.querySelector(".hover").innerHTML = `<rect x="${f(x(i) - step / 2)}" y="${T}" width="${Math.max(step, 2).toFixed(2)}" height="${H - T - B}" fill="#c9ced8" fill-opacity=".08"/>` +
+          (n.missing ? "" : `<circle cx="${f(x(i))}" cy="${f(y(n.bed))}" r="3" fill="var(--night)" stroke="var(--panel)"/><circle cx="${f(x(i))}" cy="${f(y(n.wake))}" r="3" fill="var(--hot)" stroke="var(--panel)"/>`);
+        out.className = "now" + (n.missing ? " none" : "");
+        out.innerHTML = n.missing ? `${nightOf(n)}  — no record` : `${nightOf(n)}  ${clock(n.bed)} → ${clock(n.wake)}  ${dur(n.asleep)}`;
+      }
+      const pick = (e) => {
+        if (!geo) return;
+        const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
+        const p = pt.matrixTransform(svg.getScreenCTM().inverse());
+        show(Math.max(0, Math.min(nights.length - 1, Math.floor((p.x - geo.L) / geo.step))));
+      };
+      svg.addEventListener("pointermove", pick);
+      svg.addEventListener("pointerdown", pick);
+      svg.addEventListener("pointerleave", () => show(lastI));
+      new ResizeObserver(draw).observe(svg);   // パネルが開いて幅が決まってから描く。幅が変わったら描き直す
+      return box;
+    }
+
     // ブクログの本棚を読む。API に CORS ヘッダーがないので fetch ではなく JSONP で読む。
     const booklogCache = {};
     function loadBooklog({ user, count, status = 0 }) {
@@ -515,10 +635,15 @@
       const li = document.createElement("li");
       li.className = "thing";
       // カード全体（寄りの AA と説明）が 1 つのリンク
-      li.innerHTML = `<a class="card" target="_blank" rel="noopener">
-        <pre class="crop" aria-hidden="true"></pre>
-        <p class="kind"></p><h3></h3></a>`;
-      li.querySelector("a.card").href = it.links[0].url;
+      // リンク先がない小物（目覚まし時計）は、押すとパネルを開くボタンにする
+      const inner = `<pre class="crop" aria-hidden="true"></pre><p class="kind"></p><h3></h3>`;
+      if (it.links && it.links.length) {
+        li.innerHTML = `<a class="card" target="_blank" rel="noopener">${inner}</a>`;
+        li.querySelector("a.card").href = it.links[0].url;
+      } else {
+        li.innerHTML = `<button type="button" class="card">${inner}</button>`;
+        li.querySelector("button.card").addEventListener("click", () => open(id));
+      }
       li.querySelector(".kind").textContent = it.furniture;
       li.querySelector("h3").textContent = it.title;
       const crop = li.querySelector("pre.crop");
