@@ -34,6 +34,15 @@ const tok = await fetch("https://oauth2.googleapis.com/token", {
 if (!tok.ok) throw new Error(`Google のトークン: HTTP ${tok.status} ${(await tok.json().catch(() => ({}))).error ?? ""}`.trim());
 const { access_token } = await tok.json();
 
+// Google Health API はときどき 503 を返すので、5xx と 429 は少し待って取り直す（4 回まで）
+async function get(url) {
+  for (let i = 0; ; i++) {
+    const res = await fetch(url, { headers: { authorization: `Bearer ${access_token}` } });
+    if (res.ok || i === 3 || !(res.status >= 500 || res.status === 429)) return res;
+    await new Promise((r) => setTimeout(r, 2000 * 2 ** i));
+  }
+}
+
 // 期間の少し前から取る（期間の最初の夜に寝たのが前の日の昼にかかっていても拾えるように）
 const from = new Date(Date.parse(start) - JST - DAY).toISOString();
 const to = new Date().toISOString();
@@ -44,7 +53,7 @@ do {
   url.searchParams.set("filter", `sleep.interval.end_time >= "${from}" AND sleep.interval.end_time < "${to}"`);
   url.searchParams.set("pageSize", "25");
   if (pageToken) url.searchParams.set("pageToken", pageToken);
-  const res = await fetch(url, { headers: { authorization: `Bearer ${access_token}` } });
+  const res = await get(url);
   if (!res.ok) throw new Error(`Google Health: HTTP ${res.status}`);
   const body = await res.json();
   for (const dp of body.dataPoints ?? []) {

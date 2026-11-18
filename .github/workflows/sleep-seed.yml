@@ -1,5 +1,5 @@
 # 一時的な workflow（済んだら消す）。作業ブランチの sleep.js を本物のデータで作り直してコミットする。
-# ログには晩の数だけが出る（fetch-sleep.mjs は中身をログに出さない）。
+# ログには晩の数だけが出る（fetch-sleep.mjs は中身をログに出さない）。2 回目: 503 の取り直しを足した
 name: Sleep seed (temporary)
 
 on:
