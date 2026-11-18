@@ -22,6 +22,9 @@
   const WIN = { x0: -0.9, x1: -0.1, y0: 1.02, y1: 1.62 };
   const TOP = 0.75; // 天板の高さ
   const TRI_COLOR = [0.12, 0.12, 0.13];   // 写真立ての正三角形の色
+  // 目覚まし時計（Sleep）: 丸い本体の中心と半径。文字盤はカメラの方を向ける
+  const CLOCK = { x: 0.69, y: TOP + 0.064, z: 0.46, r: 0.052 };
+  const CLOCK_TIME = [7, 0];              // 文字盤の時刻（時, 分）
   // 壁のポスター（縦長）。柄は tex.poster* として増やし、ここで選ぶ
   const POSTER = "happy";
   const POSTER_TALL = { x0: 0.34, x1: 0.55, y0: 1.34, y1: 1.64 };   // モニター上端（1.27）から少し離す
@@ -198,6 +201,27 @@
       const side = 0.09, h = side * Math.sqrt(3) / 2, top = h * 2 / 3, base = -h / 3;
       if (wy >= base && wy <= top && Math.abs(wx) <= (top - wy) / Math.sqrt(3)) return TRI_COLOR;
       return [0.93, 0.92, 0.88];                                      // 地（無地）
+    },
+    // 目覚まし時計: カメラの方を向いた側だけ白い文字盤（目盛りと針）、ほかは本体の色
+    clock(p, n) {
+      const v = [p[0] - CLOCK.x, p[1] - CLOCK.y, p[2] - CLOCK.z];
+      if (n[0] * CLOCK_FACE.d[0] + n[1] * CLOCK_FACE.d[1] + n[2] * CLOCK_FACE.d[2] < 0.74) return [0.78, 0.16, 0.13];
+      // 文字盤の中の位置（半径 1 で、u は右、w は上）
+      const u = (v[0] * CLOCK_FACE.right[0] + v[1] * CLOCK_FACE.right[1] + v[2] * CLOCK_FACE.right[2]) / CLOCK.r;
+      const w = (v[0] * CLOCK_FACE.up[0] + v[1] * CLOCK_FACE.up[1] + v[2] * CLOCK_FACE.up[2]) / CLOCK.r;
+      const ink = [0.1, 0.1, 0.11];
+      // 針: 中心から角度 a（12 時から時計回り）へ長さ len の線分に近いか
+      const hand = (a, len, wd) => {
+        const hx = Math.sin(a), hy = Math.cos(a), t = clamp(u * hx + w * hy, 0, len);
+        return Math.hypot(u - hx * t, w - hy * t) < wd;
+      };
+      const [hh, mm] = CLOCK_TIME;
+      if (hand((hh % 12 + mm / 60) / 12 * Math.PI * 2, 0.4, 0.07)) return ink;
+      if (hand(mm / 60 * Math.PI * 2, 0.58, 0.05)) return ink;
+      // 12・3・6・9 の目盛り
+      const r = Math.hypot(u, w), a = Math.atan2(u, w);
+      if (r > 0.52 && r < 0.64 && Math.abs(frac(a / (Math.PI / 2) + 0.5) - 0.5) < 0.09) return ink;
+      return [0.95, 0.93, 0.86];
     },
     woodbox(p, n) {
       if (n[1] > 0.5) return Math.abs(p[2] - 0.62) < 0.004 ? [0.2, 0.12, 0.07] : [0.6, 0.42, 0.26];
@@ -406,6 +430,16 @@
   B(0.96, TOP, 0.12, 1.04, TOP + 0.003, 0.24, M([0.95, 0.95, 0.92]), "poker");
   B(0.99, TOP + 0.003, 0.1, 1.07, TOP + 0.006, 0.22, M([0.95, 0.95, 0.92]), "poker");
   B(1.0, TOP + 0.006, 0.19, 1.02, TOP + 0.0065, 0.21, M([0.8, 0.15, 0.12]), "poker");
+
+  // 目覚まし時計（Sleep）: 丸い本体、上に 2 つのベルとその間のハンマー、下に 2 本の脚
+  const clockBody = M([0.78, 0.16, 0.13], { glow: [0.1, 0.02, 0.015] });
+  S(CLOCK.x, CLOCK.y, CLOCK.z, CLOCK.r, M(null, { tex: tex.clock, selfLit: 0.35 }), "clock");
+  for (const sx of [-1, 1]) {
+    const a = 0.62;                                                       // ベルの傾き（ラジアン）
+    S(CLOCK.x + sx * Math.sin(a) * CLOCK.r * 1.02, CLOCK.y + Math.cos(a) * CLOCK.r * 1.02, CLOCK.z + 0.006, 0.022, clockBody, "clock");
+    S(CLOCK.x + sx * 0.03, TOP + 0.007, CLOCK.z + 0.004, 0.009, M([0.1, 0.1, 0.11]), "clock");
+  }
+  S(CLOCK.x, CLOCK.y + CLOCK.r + 0.012, CLOCK.z + 0.008, 0.007, metal, "clock");
 
   // 木箱（しまってあるもの）
   B(0.82, TOP, 0.52, 1.14, 0.92, 0.73, M(null, { tex: tex.woodbox }), "box");
@@ -674,6 +708,13 @@
 
   // ---- カメラ ------------------------------------------------------------
   const CAM = [0.02, 1.32, -1.2];
+  // 目覚まし時計の文字盤の向き: d はカメラの方、right / up は画面の右・上に当たる向き
+  const CLOCK_FACE = (() => {
+    const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+    const d = norm([CAM[0] - CLOCK.x, CAM[1] - CLOCK.y, CAM[2] - CLOCK.z]), f = [-d[0], -d[1], -d[2]];
+    const right = norm(cross([0, 1, 0], f));
+    return { d, right, up: cross(f, right) };
+  })();
   const TARGET = [0.02, 0.98, 0.6];
   const HFOV = 70 * Math.PI / 180;
 

@@ -78,6 +78,13 @@ window.ROOM_DATA = {
       // パネルに出す日記のページの写真（見開きで 2 枚ずつ、ページ送りできる）。中身は diary.js（scripts/fetch-diary.mjs が生成）
       diary: true
     },
+    clock: {
+      furniture: "目覚まし時計",
+      title: "😴 Sleep",
+      // 対応する Notion ページはないので links は書かない（一覧のカードはパネルを開く）
+      // パネルに出す直近 26 週の入眠・起床。中身は sleep.js（scripts/fetch-sleep.mjs が生成）
+      sleep: true
+    },
     poker: {
       furniture: "チップとカード",
       title: "🃏 Poker",

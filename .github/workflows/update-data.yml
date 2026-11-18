@@ -1,4 +1,4 @@
-# 外部サイトのデータ（filmarks.js・github.js・posts.js・diary.js）を取り直して、まとめて 1 回だけコミット・デプロイする。
+# 外部サイトのデータ（filmarks.js・github.js・posts.js・diary.js・sleep.js）を取り直して、まとめて 1 回だけコミット・デプロイする。
 # どれもブラウザから直接は読めない（API がない・トークンが要る・CORS）ので、ここで取得して静的ファイルとしてコミットする。
 #
 # 取得は取得先ごとに別の job で動かす。1 つが壊れても残りは更新し、壊れた job だけが赤くなる
@@ -39,6 +39,9 @@ jobs:
           - name: Diary
             file: diary.js
             run: node scripts/fetch-diary.mjs 800
+          - name: Sleep
+            file: sleep.js
+            run: node scripts/fetch-sleep.mjs 26
     steps:
       - uses: actions/checkout@v7.0.1
         with:
@@ -52,6 +55,10 @@ jobs:
       - name: Fetch ${{ matrix.name }}
         env:
           GITHUB_TOKEN: ${{ github.token }}   # fetch-github.mjs が GraphQL API に使う
+          # fetch-sleep.mjs が Google Health API に使う。ほかの取得先には渡さない
+          GOOGLE_CLIENT_ID: ${{ matrix.name == 'Sleep' && secrets.GOOGLE_CLIENT_ID || '' }}
+          GOOGLE_CLIENT_SECRET: ${{ matrix.name == 'Sleep' && secrets.GOOGLE_CLIENT_SECRET || '' }}
+          GOOGLE_HEALTH_REFRESH_TOKEN: ${{ matrix.name == 'Sleep' && secrets.GOOGLE_HEALTH_REFRESH_TOKEN || '' }}
           FETCH: ${{ matrix.run }}
           NAME: ${{ matrix.name }}
         run: |
@@ -101,7 +108,7 @@ jobs:
       - name: Commit if changed
         id: commit
         run: |
-          files="filmarks.js github.js posts.js diary.js"
+          files="filmarks.js github.js posts.js diary.js sleep.js"
           if git diff --quiet -- $files; then
             echo "変更なし"
             echo "changed=false" >> "$GITHUB_OUTPUT"

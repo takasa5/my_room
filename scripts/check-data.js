@@ -43,7 +43,7 @@ if (!isObj(data)) {
     for (const [id, it] of Object.entries(data.items)) {
       const w = `items.${id}`;
       if (!isObj(it)) { fail(w, "オブジェクトにする"); continue; }
-      checkKeys(w, it, ["furniture", "title", "links", "image", "imageSize", "imageLink", "booklog", "filmarks", "github", "posts", "diary"]);
+      checkKeys(w, it, ["furniture", "title", "links", "image", "imageSize", "imageLink", "booklog", "filmarks", "github", "posts", "diary", "sleep"]);
 
       // 押しても反応しない家具にならないよう、scene.js に同じ id の家具があること
       if (!sceneIds.has(id)) fail(w, `scene.js に id "${id}" の家具がない`);
@@ -51,8 +51,11 @@ if (!isObj(data)) {
       if (!isText(it.furniture)) fail(`${w}.furniture`, "空でない文字列にする");
       if (!isText(it.title)) fail(`${w}.title`, "空でない文字列にする");
 
-      if (!Array.isArray(it.links) || it.links.length === 0) {
-        fail(`${w}.links`, "1 件以上の配列にする（一覧のカードは links[0] を開く）");
+      // links は省ける（一覧のカードは links[0] を開き、ないときはパネルを開く）。ただしパネルに何も出ない小物にはしない
+      if (!("links" in it)) {
+        if (!(it.sleep === true)) fail(`${w}.links`, "links を省けるのは、パネルに中身を出す小物（sleep など）だけ");
+      } else if (!Array.isArray(it.links) || it.links.length === 0) {
+        fail(`${w}.links`, "1 件以上の配列にする（使わないならキーごと省く）");
       } else {
         it.links.forEach((l, i) => {
           const lw = `${w}.links[${i}]`;
@@ -89,6 +92,7 @@ if (!isObj(data)) {
       if ("github" in it && it.github !== true) fail(`${w}.github`, "true にする（使わないなら書かない）");
       if ("posts" in it && it.posts !== true) fail(`${w}.posts`, "true にする（使わないなら書かない）");
       if ("diary" in it && it.diary !== true) fail(`${w}.diary`, "true にする（使わないなら書かない）");
+      if ("sleep" in it && it.sleep !== true) fail(`${w}.sleep`, "true にする（使わないなら書かない）");
     }
 
     // filmarks.js は Actions がスクレイピングして作るので、中身の形もここで見る。
@@ -97,6 +101,7 @@ if (!isObj(data)) {
     if (Object.values(data.items).some((it) => isObj(it) && it.github === true)) checkGithub();
     if (Object.values(data.items).some((it) => isObj(it) && it.posts === true)) checkPosts();
     if (Object.values(data.items).some((it) => isObj(it) && it.diary === true)) checkDiary();
+    if (Object.values(data.items).some((it) => isObj(it) && it.sleep === true)) checkSleep();
   }
 }
 
@@ -181,6 +186,33 @@ function checkDiary() {
     else if (i > 0 && isObj(di.pages[i - 1]) && di.pages[i - 1].date > p.date) fail(`${pw}.date`, "古い順に並べる（見開きの組がずれる）");
     if (!(typeof p.ratio === "number" && p.ratio > 0 && p.ratio < 10)) fail(`${pw}.ratio`, "画像の高さ÷幅（正の数）にする");
   });
+}
+
+// sleep.js は Actions が Google Health API から作る。index.html は start からの夜を並べ、入眠〜起床をリボンにする。
+// 公開してよい粒度（15 分単位、3 つの数だけ）を超えていないかもここで見る
+function checkSleep() {
+  const file = path.join(root, "sleep.js");
+  if (!fs.existsSync(file)) { fail("sleep.js", "sleep: true の項目があるのにファイルがない"); return; }
+  const sb = { window: {} };
+  vm.runInNewContext(fs.readFileSync(file, "utf8"), sb, { filename: "sleep.js" });
+  const sl = sb.window.SLEEP;
+  if (!isObj(sl)) { fail("sleep.js", "window.SLEEP がオブジェクトになっていない"); return; }
+  checkKeys("SLEEP", sl, ["weeks", "start", "nights"]);
+  if (!isPosInt(sl.weeks)) fail("SLEEP.weeks", "正の整数にする");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(sl.start) || Number.isNaN(Date.parse(sl.start))) fail("SLEEP.start", "YYYY-MM-DD にする");
+  if (!Array.isArray(sl.nights)) { fail("SLEEP.nights", "配列にする"); return; }
+  if (isPosInt(sl.weeks) && sl.nights.length !== sl.weeks * 7) fail("SLEEP.nights", `weeks × 7（${sl.weeks * 7}）晩分にする`);
+  const q15 = (v) => Number.isInteger(v) && v % 15 === 0;
+  sl.nights.forEach((n, i) => {
+    if (n === null) return;
+    const nw = `SLEEP.nights[${i}]`;
+    if (!Array.isArray(n) || n.length !== 3 || !n.every(q15)) { fail(nw, "null か、15 分単位の整数 3 つ [入眠, 起床, 睡眠時間] にする"); return; }
+    const [bed, wake, asleep] = n;
+    if (bed < 12 * 60 || bed >= 36 * 60) fail(nw, "入眠はその夜の日付の 12:00〜翌 12:00（720〜2159 分）にする");
+    if (!(wake > bed && wake - bed <= 24 * 60)) fail(nw, "起床は入眠より後、24 時間以内にする");
+    if (!(asleep > 0 && asleep <= wake - bed)) fail(nw, "睡眠時間は 0 より大きく、入眠〜起床の長さ以下にする");
+  });
+  if (!sl.nights.some((n) => n !== null)) fail("SLEEP.nights", "記録が 1 晩もない");
 }
 
 if (errors.length) {
