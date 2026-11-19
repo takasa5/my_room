@@ -3,21 +3,21 @@ window.GITHUB = {
   "user": "takasa5",
   "url": "https://github.com/takasa5",
   "weeks": 26,
-  "total": 355,
+  "total": 368,
   "start": "2026-05-24",
-  "levels": [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,0,1,0,0,1,0,1,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,1,1,0,0,0,0,0,0,0,0,1,0,1,2,3,4,2,0,0,0,0,0,1,1,3,2,4,4,2],
+  "levels": [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,0,1,0,0,1,0,1,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,1,1,0,0,0,0,0,0,0,0,1,0,1,2,3,4,2,0,0,0,0,0,1,1,3,2,4,4,2,1],
   "repos": [
-    {
-      "name": "chrome-command-palette",
-      "url": "https://github.com/takasa5/chrome-command-palette",
-      "image": "https://repository-images.githubusercontent.com/1440394295/4fb7971a-15c4-4ce5-b863-d1c176e61d0b",
-      "pushedAt": "2026-11-18T01:27:33Z"
-    },
     {
       "name": "my_room",
       "url": "https://github.com/takasa5/my_room",
       "image": "https://repository-images.githubusercontent.com/1455471419/d0ca0bfa-47a6-43f7-b03e-9032231576f6",
-      "pushedAt": "2026-11-17T02:43:48Z"
+      "pushedAt": "2026-11-18T16:09:55Z"
+    },
+    {
+      "name": "chrome-command-palette",
+      "url": "https://github.com/takasa5/chrome-command-palette",
+      "image": "https://repository-images.githubusercontent.com/1440394295/4fb7971a-15c4-4ce5-b863-d1c176e61d0b",
+      "pushedAt": "2026-11-18T14:02:51Z"
     },
     {
       "name": "my_notion_integrations",
