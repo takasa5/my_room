@@ -30,7 +30,13 @@ E2E を書く、直す、足すか判断するときは、`e2e` スキル（[.cl
 
 ## データ更新が失敗したとき
 
-`update-data.yml` が失敗すると `.github/workflows/auto-fix-update-data.yml` が動き、Claude（`anthropics/claude-code-action`）が原因を調べる。コードで直せれば修正 PR、直せなければ報告 Issue を作る（どちらもラベル `update-data-failure`。同じ原因で開いているものがあればコメントだけ）。Secret の `CLAUDE_CODE_OAUTH_TOKEN`（または `ANTHROPIC_API_KEY`）と、Claude GitHub App のインストールが要る。
+`update-data.yml` が失敗すると `.github/workflows/auto-fix-update-data.yml` が動き、Claude（`anthropics/claude-code-action`）が原因を調べる。取得スクリプトを直せて取得が通れば修正 PR、そうでなければ報告 Issue を作る（どちらもラベル `update-data-failure`。同じ取得先で開いているものがあればコメントだけ）。Secret の `CLAUDE_CODE_OAUTH_TOKEN`（または `ANTHROPIC_API_KEY`）が要る。
+
+Claude はログや外部サイトの中身を読むので、プロンプトインジェクションを前提に組んである。
+
+* Claude が動く job（diagnose）は書き込める権限も Secret も持たない。Claude が動かすコマンドはサンドボックスに入れ、繋がる先を取得先のホスト（`scripts/auto-fix/peek.mjs` の `HOSTS` と、workflow の `sandbox.network.allowedDomains`）だけにしている。取得先を増やしたら両方に足す
+* Claude の出力は差分と報告文だけ。差分は `scripts/auto-fix/apply-patch.sh` が `scripts/fetch-*.mjs` だけを変えているか確かめてから当て、別の job（verify・publish）が取得を試して PR を作る
+* verify の取得コマンドは `update-data.yml` の matrix と引数を揃える
 
 ## GitHub Actions
 
