@@ -6,7 +6,7 @@
 * `filmarks.js` は `scripts/fetch-filmarks.mjs` が作る（`.github/workflows/update-data.yml` が毎日更新する）。手で書き換えない
 * `github.js` は `scripts/fetch-github.mjs` が作る（`.github/workflows/update-data.yml` が毎日更新する）。手で書き換えない
 * `diary.js` は `scripts/fetch-diary.mjs` が公開 Notion サイトの Paper Diary から作る（`.github/workflows/update-data.yml` が毎日更新する）。手で書き換えない
-* `sleep.js` は `scripts/fetch-sleep.mjs` が Google Health API（旧 Fitbit）から作る（`.github/workflows/update-data.yml` が毎日更新する。Secret の `GOOGLE_CLIENT_ID`・`GOOGLE_CLIENT_SECRET`・`GOOGLE_HEALTH_REFRESH_TOKEN` を使う）。手で書き換えない。公開リポジトリなので、出すのは 1 晩につき入眠・起床・睡眠時間（15 分単位）だけにし、取った中身をログに出さない
+* `sleep.js` は `scripts/fetch-sleep.mjs` が Google Health API（旧 Fitbit）から作る（`.github/workflows/update-data.yml` が毎日更新する。Secret の `GOOGLE_CLIENT_ID`・`GOOGLE_CLIENT_SECRET`・`GOOGLE_HEALTH_REFRESH_TOKEN` を使う）。手で書き換えない。公開リポジトリなので、出すのは 1 晩につき入眠・起床・睡眠時間（5 分単位）だけにし、取った中身をログに出さない
 * `posts.js` は `scripts/fetch-posts.mjs` が公開 Notion サイトから作る（`.github/workflows/update-data.yml` が毎日更新する）。手で書き換えない
 
 ## 確認

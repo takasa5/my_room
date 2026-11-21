@@ -4,7 +4,7 @@
 //   トークンは takasa5/my_google_health の `deno task setup` で取ったもの（権限は googlehealth.sleep.readonly だけ）
 //
 // 公開リポジトリに置くので、出すものを絞る:
-//   * 1 晩につき 入眠・起床の時刻と睡眠時間だけ。どれも 15 分単位に丸める。睡眠ステージや中途覚醒は出さない
+//   * 1 晩につき 入眠・起床の時刻と睡眠時間だけ。どれも 5 分単位に丸める。睡眠ステージや中途覚醒は出さない
 //   * いちばん新しいのは「おとといの夜」（起きたのが昨日の朝）。ゆうべの分はまだ出さない
 //   * 取った中身はログに出さない（Actions のログも公開される）
 import { writeFileSync } from "node:fs";
@@ -15,7 +15,7 @@ if (!clientId || !clientSecret || !refreshToken) throw new Error("GOOGLE_CLIENT_
 
 const JST = 9 * 3600e3;                   // 日本時間（夏時間なし）
 const DAY = 864e5;
-const Q = 15;                             // 丸める単位（分）
+const Q = 5;                              // 丸める単位（分）
 const MIN_NIGHT = 3 * 60;                 // これより短い眠りしかない夜は、昼寝とみなして記録なしにする
 const MERGE_GAP = 90 * 60e3;              // 夜中に目が覚めて記録が分かれたとき、この間隔までは 1 つの眠りとしてつなぐ
 
@@ -91,6 +91,6 @@ if (!nights.some(Boolean)) throw new Error("睡眠の記録が 1 晩分も取れ
 const out = { weeks, start, nights };
 writeFileSync(new URL("../sleep.js", import.meta.url),
   "// scripts/fetch-sleep.mjs が生成。手で編集しない。\n" +
-  "// nights[i] は start から i 日目の夜。[入眠, 起床, 睡眠時間]（分。入眠・起床はその夜の日付の 0:00 から。15 分単位）か、記録なしは null\n" +
+  "// nights[i] は start から i 日目の夜。[入眠, 起床, 睡眠時間]（分。入眠・起床はその夜の日付の 0:00 から。5 分単位）か、記録なしは null\n" +
   `window.SLEEP = ${JSON.stringify(out)};\n`);
 console.log(`${start} からの ${nights.length} 晩（記録あり ${nights.filter(Boolean).length} 晩）を sleep.js に書いた`);
