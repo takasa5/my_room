@@ -28,6 +28,10 @@ main に push すると `.github/workflows/deploy.yml` が、テストを通し�
 
 E2E を書く、直す、足すか判断するときは、`e2e` スキル（[.claude/skills/e2e/SKILL.md](.claude/skills/e2e/SKILL.md)）に従う。
 
+## データ更新が失敗したとき
+
+`update-data.yml` が失敗すると `.github/workflows/auto-fix-update-data.yml` が動き、Claude（`anthropics/claude-code-action`）が原因を調べる。コードで直せれば修正 PR、直せなければ報告 Issue を作る（どちらもラベル `update-data-failure`。同じ原因で開いているものがあればコメントだけ）。Secret の `CLAUDE_CODE_OAUTH_TOKEN`（または `ANTHROPIC_API_KEY`）と、Claude GitHub App のインストールが要る。
+
 ## GitHub Actions
 
 action はタグで書き、`gh actions-lock` で `.github/workflows/actions.lock` に固定する。workflow を変えたら `gh actions-lock` をやり直してコミットする（lockfile とずれた workflow は起動しない）。
