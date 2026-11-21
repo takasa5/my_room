@@ -83,6 +83,7 @@ jobs:
       actions: read   # 失敗した run のログを読む
     outputs:
       result: ${{ steps.claude.outputs.structured_output }}
+      sandbox: ${{ steps.sandbox.outputs.ok }}
     steps:
       - uses: actions/checkout@v7.0.1
         with:
@@ -109,13 +110,31 @@ jobs:
       # 設定は root しか書けない managed settings に置くので、Claude からは変えられない。
       # サンドボックスが動かなければ Claude は起動しない（failIfUnavailable）→ publish が「調査できなかった」Issue を作る
       - name: Set up sandbox
+        id: sandbox
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends bubblewrap socat
-          # Ubuntu 24.04 は AppArmor で非特権の user namespace を止めているので開ける（bubblewrap が使う）
+          # Ubuntu 24.04 以降は AppArmor で非特権の user namespace を止めているので開ける（bubblewrap が使う）
           if [ -f /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then
             sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
           fi
+          # Ubuntu の bwrap 用プロファイル（bwrap-userns-restrict）は、bubblewrap の中で capability を取り上げる。
+          # Claude Code のサンドボックスは中でさらに user namespace を作る（seccomp を掛けるため）ので、これがあると
+          # 「write /proc/self/setgroups: Permission denied」で全コマンドが失敗する。外す
+          for f in /etc/apparmor.d/bwrap-userns-restrict /etc/apparmor.d/bwrap; do
+            if [ -f "$f" ]; then
+              echo "AppArmor のプロファイルを外す: $f"
+              sudo apparmor_parser -R "$f" || true
+            fi
+          done
+          # サンドボックスと同じく、bubblewrap の中でさらに user namespace を作れるか確かめる。
+          # 作れなければ Claude はコマンドを 1 つも動かせないので、ここで止める（Claude を起動しない）
+          if ! bwrap --ro-bind / / --dev /dev --proc /proc --unshare-net --unshare-pid -- unshare --user --map-root-user true; then
+            echo "::error title=サンドボックスが使えない::bubblewrap の中で user namespace を作れない。AppArmor の状態:"
+            sudo aa-status 2> /dev/null | grep -iE "bwrap|unpriv" || true
+            exit 1
+          fi
+          echo "ok=true" >> "$GITHUB_OUTPUT"
           sudo mkdir -p /etc/claude-code
           sudo tee /etc/claude-code/managed-settings.json > /dev/null <<'JSON'
           {
@@ -284,6 +303,7 @@ jobs:
           UNCOVERED: ${{ needs.triage.outputs.uncovered }}
           COVERED: ${{ needs.triage.outputs.covered }}
           DIAGNOSE: ${{ needs.diagnose.result }}
+          SANDBOX: ${{ needs.diagnose.outputs.sandbox }}
           VERIFY_OK: ${{ needs.verify.outputs.ok }}
           VERIFY_LOG: ${{ needs.verify.outputs.log }}
           # Claude の token の期限（YYYY-MM-DD）。token を作り直したら `gh variable set CLAUDE_TOKEN_EXPIRES --body <日付>` で直す
@@ -336,7 +356,13 @@ jobs:
           # PR にするのは、Claude が fix と言い、verify が通り、ここで差分を当て直せたときだけ
           kind=issue
           note=""
-          if [ "$DIAGNOSE" != success ] || [ -z "$RESULT" ]; then
+          if [ "$DIAGNOSE" != success ] && [ "$SANDBOX" != true ]; then
+            # Claude を起動する前の、サンドボックスの確認で止まった
+            title="$UNCOVERED（Claude のサンドボックスが起動しない）"
+            note="Claude の調査用のサンドボックス（bubblewrap）が GitHub Actions の runner で使えなかったので、Claude を起動しませんでした（[この run]($SELF_URL) の「Set up sandbox」のログを見てください）。
+          runner の OS が変わって、AppArmor などの制限が増えた可能性があります。\`.github/workflows/auto-fix-update-data.yml\` の「Set up sandbox」を直す必要があります。
+          データ更新が失敗した原因そのものは、まだ調べられていません。失敗した run のログを見てください。"
+          elif [ "$DIAGNOSE" != success ] || [ -z "$RESULT" ]; then
             title="$UNCOVERED（Claude の調査が失敗。token 切れかもしれない）"
             note="Claude による調査が最後まで終わりませんでした（[この run]($SELF_URL)）。
           いちばんありそうなのは、Claude の token（Secret \`CLAUDE_CODE_OAUTH_TOKEN\`）が切れていることです。$(token_note)
@@ -346,7 +372,7 @@ jobs:
           2. \`gh secret set CLAUDE_CODE_OAUTH_TOKEN --repo $GITHUB_REPOSITORY\` で登録し直す
           3. \`gh variable set CLAUDE_TOKEN_EXPIRES --repo $GITHUB_REPOSITORY --body <1 年後の日付>\` で期限を更新する
 
-          token でなければ、サンドボックスが起動しなかった、ターン数や時間の上限に達した、なども考えられます。[この run]($SELF_URL) のログを見てください。
+          token でなければ、ターン数や時間の上限に達した、なども考えられます。[この run]($SELF_URL) のログを見てください。
           データ更新が失敗した原因そのものは、まだ調べられていません。失敗した run のログを見てください。"
           elif [ "$outcome" = fix ]; then
             if [ "$VERIFY_OK" != true ]; then
