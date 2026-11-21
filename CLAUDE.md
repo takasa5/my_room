@@ -28,6 +28,16 @@ main に push すると `.github/workflows/deploy.yml` が、テストを通し�
 
 E2E を書く、直す、足すか判断するときは、`e2e` スキル（[.claude/skills/e2e/SKILL.md](.claude/skills/e2e/SKILL.md)）に従う。
 
+## データ更新が失敗したとき
+
+`update-data.yml` が失敗すると `.github/workflows/auto-fix-update-data.yml` が動き、Claude（`anthropics/claude-code-action`）が原因を調べる。取得スクリプトを直せて取得が通れば修正 PR、そうでなければ報告 Issue を作る（どちらもラベル `update-data-failure`）。同じ取得先の PR・Issue が開いている間は Claude を動かさず、「続いている」とコメントするだけにする（閉じると次の失敗でまた調べる）。Secret の `CLAUDE_CODE_OAUTH_TOKEN`（または `ANTHROPIC_API_KEY`）が要る。Variable の `CLAUDE_TOKEN_EXPIRES`（token の期限 YYYY-MM-DD）を入れておくと、Claude が動かなかったときの Issue に期限が載る。token を作り直したら両方を更新する。
+
+Claude はログや外部サイトの中身を読むので、プロンプトインジェクションを前提に組んである。
+
+* Claude が動く job（diagnose）は書き込める権限も Secret も持たない。Claude が動かすコマンドはサンドボックスに入れ、繋がる先を取得先のホスト（`scripts/auto-fix/peek.mjs` の `HOSTS` と、workflow の `sandbox.network.allowedDomains`）だけにしている。取得先を増やしたら両方に足す
+* Claude の出力は差分と報告文だけ。差分は `scripts/auto-fix/apply-patch.sh` が `scripts/fetch-*.mjs` だけを変えているか確かめてから当て、別の job（verify・publish）が取得を試して PR を作る
+* verify の取得コマンドは `update-data.yml` の matrix と引数を揃える
+
 ## GitHub Actions
 
 action はタグで書き、`gh actions-lock` で `.github/workflows/actions.lock` に固定する。workflow を変えたら `gh actions-lock` をやり直してコミットする（lockfile とずれた workflow は起動しない）。

@@ -4,3 +4,4 @@
 node_modules/
 e2e/.output/
 _site/
+.auto-fix/
