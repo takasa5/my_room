@@ -189,7 +189,7 @@ function checkDiary() {
 }
 
 // sleep.js は Actions が Google Health API から作る。index.html は start からの夜を並べ、入眠〜起床をリボンにする。
-// 公開してよい粒度（15 分単位、3 つの数だけ）を超えていないかもここで見る
+// 公開してよい粒度（5 分単位、3 つの数だけ）を超えていないかもここで見る
 function checkSleep() {
   const file = path.join(root, "sleep.js");
   if (!fs.existsSync(file)) { fail("sleep.js", "sleep: true の項目があるのにファイルがない"); return; }
@@ -202,11 +202,11 @@ function checkSleep() {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(sl.start) || Number.isNaN(Date.parse(sl.start))) fail("SLEEP.start", "YYYY-MM-DD にする");
   if (!Array.isArray(sl.nights)) { fail("SLEEP.nights", "配列にする"); return; }
   if (isPosInt(sl.weeks) && sl.nights.length !== sl.weeks * 7) fail("SLEEP.nights", `weeks × 7（${sl.weeks * 7}）晩分にする`);
-  const q15 = (v) => Number.isInteger(v) && v % 15 === 0;
+  const q5 = (v) => Number.isInteger(v) && v % 5 === 0;
   sl.nights.forEach((n, i) => {
     if (n === null) return;
     const nw = `SLEEP.nights[${i}]`;
-    if (!Array.isArray(n) || n.length !== 3 || !n.every(q15)) { fail(nw, "null か、15 分単位の整数 3 つ [入眠, 起床, 睡眠時間] にする"); return; }
+    if (!Array.isArray(n) || n.length !== 3 || !n.every(q5)) { fail(nw, "null か、5 分単位の整数 3 つ [入眠, 起床, 睡眠時間] にする"); return; }
     const [bed, wake, asleep] = n;
     if (bed < 12 * 60 || bed >= 36 * 60) fail(nw, "入眠はその夜の日付の 12:00〜翌 12:00（720〜2159 分）にする");
     if (!(wake > bed && wake - bed <= 24 * 60)) fail(nw, "起床は入眠より後、24 時間以内にする");
