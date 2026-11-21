@@ -11,6 +11,7 @@
 #   publish  … 差分をもう一度確かめて、PR か Issue を作る。Claude も差分のコードも動かさない
 #
 # 必要な Secret: CLAUDE_CODE_OAUTH_TOKEN（`claude setup-token` で作る）か ANTHROPIC_API_KEY のどちらか
+# 手で動かすときは、調べる Update data の run の ID を渡す（Actions の画面の Run workflow か `gh workflow run auto-fix-update-data.yml -f run_id=<ID>`）
 # 任意の Variable: CLAUDE_TOKEN_EXPIRES（token の期限 YYYY-MM-DD）。Claude が動かなかったときの Issue に期限を書く
 name: Auto fix update data
 
@@ -18,6 +19,13 @@ on:
   workflow_run:
     workflows: ["Update data"]
     types: [completed]
+  # 失敗した run を指定して、手で調べ直す（token を作り直したあとや、動作の確認に）
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: 調べる Update data の run の ID（失敗したもの。URL の /actions/runs/ の後ろの数字）
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -32,8 +40,9 @@ jobs:
   # 報告済み（ラベル update-data-failure の PR・Issue が開いている）の取得先は、閉じるまで Claude を動かさない。
   # 失敗が何日も続いても、Claude が動くのは取得先ごとに 1 回だけになる
   triage:
-    # main の定期実行・手動実行が失敗したときだけ動く
+    # main の定期実行・手動実行が失敗したとき、またはこの workflow を手で動かしたときだけ動く
     if: >-
+      github.event_name == 'workflow_dispatch' ||
       github.event.workflow_run.conclusion == 'failure' &&
       github.event.workflow_run.head_branch == 'main' &&
       (github.event.workflow_run.event == 'schedule' || github.event.workflow_run.event == 'workflow_dispatch')
@@ -53,8 +62,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          RUN_ID: ${{ github.event.workflow_run.id }}
+          RUN_ID: ${{ github.event.workflow_run.id || inputs.run_id }}
         run: |
+          # 手で動かしたときは、指定された run が Update data の失敗した run かを確かめる
+          read -r name conclusion < <(gh run view "$RUN_ID" --json workflowName,conclusion --jq '"\(.workflowName | gsub(" "; "_")) \(.conclusion)"')
+          if [ "$name" != Update_data ] || [ "$conclusion" != failure ]; then
+            echo "::error::run $RUN_ID は Update data の失敗した run ではない（${name//_/ }: ${conclusion}）"
+            exit 1
+          fi
           # "fetch (Filmarks)" → Filmarks。commit job なら commit
           failed=$(gh run view "$RUN_ID" --json jobs \
             --jq '[.jobs[] | select(.conclusion == "failure") | .name | sub("^fetch \\((?<s>.*)\\)$"; "\(.s)")] | join(",")')
@@ -97,7 +112,7 @@ jobs:
       - name: Collect failure logs
         env:
           GH_TOKEN: ${{ github.token }}
-          RUN_ID: ${{ github.event.workflow_run.id }}
+          RUN_ID: ${{ github.event.workflow_run.id || inputs.run_id }}
         run: |
           mkdir -p .auto-fix
           gh run view "$RUN_ID" --repo "$GITHUB_REPOSITORY" \
@@ -288,8 +303,8 @@ jobs:
           VERIFY_LOG: ${{ needs.verify.outputs.log }}
           # Claude の token の期限（YYYY-MM-DD）。token を作り直したら `gh variable set CLAUDE_TOKEN_EXPIRES --body <日付>` で直す
           TOKEN_EXPIRES: ${{ vars.CLAUDE_TOKEN_EXPIRES }}
-          RUN_URL: ${{ github.event.workflow_run.html_url }}
-          RUN_ID: ${{ github.event.workflow_run.id }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id || inputs.run_id }}
+          RUN_ID: ${{ github.event.workflow_run.id || inputs.run_id }}
           SELF_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           PATCH: ${{ runner.temp }}/auto-fix/fix.patch
         run: |
@@ -385,7 +400,7 @@ jobs:
           } > "$body_file"
 
           if [ "$kind" = pr ]; then
-            branch="auto-fix/update-data-${RUN_ID}"
+            branch="auto-fix/update-data-${RUN_ID}-${GITHUB_RUN_ID}"
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git switch -c "$branch"
