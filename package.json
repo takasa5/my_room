@@ -6,6 +6,6 @@
     "e2e": "node --test --test-concurrency=1 --test-timeout=120000 \"e2e/**/*.e2e.js\""
   },
   "devDependencies": {
-    "playwright-core": "1.65.0"
+    "playwright-core": "1.65.1"
   }
 }
