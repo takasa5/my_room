@@ -1,5 +1,5 @@
 // index.html を Chromium で開き、部屋が描けて小物を押すとパネルが開くかを確かめる。
-// 外部への通信（Google Fonts、ブクログ、last.fm、Filmarks の画像など）はすべて差し替え、
+// 外部への通信（ブクログ、last.fm、Filmarks の画像など）はすべて差し替え、
 // CI の結果が外部サイトの状態に左右されないようにする。
 //   npm run e2e
 const { test, before, after } = require("node:test");
@@ -12,7 +12,10 @@ const { chromium } = require("playwright-core");
 const { buildSite } = require("../scripts/build-site.js");
 
 const outDir = path.join(__dirname, ".output");
-const TYPES = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".png": "image/png", ".svg": "image/svg+xml" };
+const TYPES = {
+  ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json",
+  ".png": "image/png", ".svg": "image/svg+xml", ".woff2": "font/woff2", ".txt": "text/plain"
+};
 
 // 1x1 の透明な PNG（画像の差し替えに使う）
 const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==", "base64");
@@ -25,7 +28,7 @@ let server, base, browser;
 
 before(async () => {
   // デプロイと同じ公開物（scripts/build-site.js）を作って配信する。公開対象に足し忘れたファイルは 404 になって失敗する
-  const root = buildSite(fs.mkdtempSync(path.join(os.tmpdir(), "my_room-site-")));
+  const root = await buildSite(fs.mkdtempSync(path.join(os.tmpdir(), "my_room-site-")));
   server = http.createServer((req, res) => {
     const p = decodeURIComponent(new URL(req.url, "http://x").pathname);
     const file = path.join(root, p === "/" ? "index.html" : p);
@@ -50,7 +53,6 @@ async function routeExternal(page, { offline = false } = {}) {
   await page.route((url) => url.hostname !== "127.0.0.1", (route) => {
     const req = route.request(), url = new URL(req.url());
     if (offline) return route.abort();
-    if (url.hostname === "fonts.googleapis.com") return route.fulfill({ contentType: "text/css", body: "" });
     if (url.hostname === "api.booklog.jp") {
       const cb = url.searchParams.get("callback");
       return route.fulfill({ contentType: "text/javascript", body: `${cb}(${JSON.stringify({ books: FAKE_BOOKS })});` });

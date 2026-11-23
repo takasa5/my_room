@@ -15,15 +15,20 @@
 <meta property="og:image:height" content="640">
 <meta property="og:image:alt" content="夕暮れのデスクを文字の点描で描いた絵と、my_room の文字">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<!-- 文字幅を決めるフォントは自前で配信する（ラテン文字だけの可変フォント。ライセンスは fonts/OFL.txt） -->
+<link rel="preload" href="fonts/JetBrainsMono-latin.woff2" as="font" type="font/woff2" crossorigin>
 <style>
+  @font-face {
+    font-family: "JetBrains Mono"; font-style: normal; font-weight: 100 800; font-display: swap;
+    src: url(fonts/JetBrainsMono-latin.woff2) format("woff2");
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+  }
   /* 点描は「暗い地の上で光る点」として描いているので、ダーク配色のみ */
   :root {
     color-scheme: dark;
     --bg: #15171c; --ink: #6b7382; --ink-strong: #c9ced8; --hot: #f2b45a;
     --panel: #1d2027; --line: #343a45; --night: #7f9cc9;
+    --advance: .6;   /* 1 文字の幅 / font-size。JetBrains Mono の値。ページがフォントを読んだあと実測で上書きする */
     /* 文字に使う灰色。--ink は点描の地の色なので、文字には背景・パネルとのコントラストが 4.5:1 を超えるこちらを使う */
     --muted: #808a9b;
   }
@@ -49,6 +54,7 @@
   .stage {
     width: 100%; max-width: 1200px;
     position: relative;
+    container-type: inline-size;         /* 絵の文字の大きさを幅（cqw）から決める */
   }
   /* 絵は本物のテキスト。文字ごとの色は <span> で付ける */
   pre#room {
@@ -56,7 +62,21 @@
     font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
     font-variant-ligatures: none; font-feature-settings: "liga" 0, "calt" 0;
     color: var(--ink);
+    /* --cols 文字 × --rows 行がちょうど幅に収まる大きさ。--cols・--rows・--cell（セルの 高さ/幅）は script が入れる。
+       高さを最初から決めておき、描き終わる前に下の一覧がずれないようにする */
+    --cw: calc(100cqw / var(--cols));    /* 1 文字の幅 */
+    font-size: calc(var(--cw) / var(--advance));
+    line-height: calc(var(--cw) * var(--cell));
+    aspect-ratio: var(--cols) / calc(var(--rows) * var(--cell));
   }
+  /* 上から少しずつ現れる。描いておいた絵の上に地の色の幕をかぶせ、1 行ずつ下へずらす */
+  pre#room::before {
+    content: ""; position: absolute; inset: 0; z-index: 2; pointer-events: none;
+    background: var(--bg); transform: translateY(100%);
+  }
+  pre#room.develop::before { animation: develop 1.2s steps(var(--rows), end) both; }
+  @keyframes develop { from { transform: translateY(0); } to { transform: translateY(100%); } }
+  @media (prefers-reduced-motion: reduce) { pre#room.develop::before { animation: none; } }
   /* 小物の文字は最初から inline-block にしておく（揺らす瞬間に組み直しが起きないように） */
   pre#room span[data-id] { cursor: pointer; display: inline-block; }
   /* ホバー時の暗転は、絵の上に重ねた幕 1 枚で行う（文字ごとに不透明度を変えると重い） */
@@ -159,6 +179,7 @@
     display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 64px 44px;
     grid-auto-rows: 1fr;                 /* どの行のカードも同じ高さ */
   }
+  .thing { container-type: inline-size; }   /* 寄りの AA の文字の大きさをカードの幅から決める */
   .thing { opacity: 0; transform: translateY(18px); transition: opacity .7s ease, transform .7s ease; }
   .thing.in { opacity: 1; transform: none; }
   .thing pre.crop {
@@ -166,6 +187,11 @@
     font-family: "JetBrains Mono", ui-monospace, Menlo, monospace;
     font-variant-ligatures: none; font-feature-settings: "liga" 0, "calt" 0;
     color: var(--ink);
+    /* 横 --crop-w 字 × 縦 --crop-h 行の枠。文字は 15px まで。描く前から高さを確保しておく */
+    --cw: min(15px * var(--advance), 100cqw / var(--crop-w));
+    font-size: calc(var(--cw) / var(--advance));
+    line-height: calc(var(--cw) * var(--cell));
+    height: calc(var(--cw) * var(--cell) * var(--crop-h));
   }
   .thing h3 { font-size: 15px; margin: 4px 0 8px; font-weight: 700; }
   .thing .card { display: block; height: 100%; color: inherit; text-decoration: none; }
@@ -185,7 +211,29 @@
   <h1 class="sr-only">My Room</h1>
   <!-- 点描は 1 万字を超える文字なので、読み上げでは外側を 1 枚の絵として扱い、中の文字は隠す（pre に role="img" だけでは子の文字が残る） -->
   <div class="stage" role="img" aria-label="夕暮れのデスクを文字の点描で描いた絵。小物を押すとページが開きます。下の一覧にも同じ内容があります。">
+    <!-- room-art -->
     <pre id="room" aria-hidden="true"></pre>
+    <script>
+    // ビルドで描いておいた絵（scripts/build-site.js が上の room-art の印のところに <template> で入れる）を、最初の描画より前に入れる。
+    // 無いとき（リポジトリの index.html をそのまま開いたとき）や ?style= で別の版を選んだときは、下の script がその場で描く
+    (function () {
+      var pre = document.getElementById("room");
+      var want = new URLSearchParams(location.search).get("style");
+      var arts = document.querySelectorAll("template.room-art");
+      for (var i = 0; i < arts.length; i++) {
+        var d = arts[i].dataset;
+        if (d.media && !matchMedia(d.media).matches) continue;
+        if (want && want !== d.style) return;
+        pre.style.setProperty("--cols", d.cols);
+        pre.style.setProperty("--rows", d.rows);
+        pre.style.setProperty("--cell", d.cell);
+        pre.dataset.cols = d.cols;
+        pre.append(arts[i].content.cloneNode(true));
+        pre.classList.add("develop");
+        return;
+      }
+    })();
+    </script>
   </div>
 
   <section class="things" aria-labelledby="things-title">
@@ -207,15 +255,16 @@
 
   <footer>source: <a id="src" href="#" target="_blank" rel="noopener">Notion</a></footer>
 
-  <script src="data.js?v=18"></script>
-  <script src="filmarks.js"></script>
-  <script src="github.js"></script>
-  <script src="posts.js"></script>
-  <script src="diary.js"></script>
-  <script src="sleep.js"></script>
-  <script src="scene.js?v=24"></script>
+  <script src="data.js?v=18" defer></script>
+  <script src="filmarks.js" defer></script>
+  <script src="github.js" defer></script>
+  <script src="posts.js" defer></script>
+  <script src="diary.js" defer></script>
+  <script src="sleep.js" defer></script>
+  <script src="scene.js?v=25" defer></script>
   <script>
-  (async function () {
+  // 上の defer の script を読み終えてから動く
+  document.addEventListener("DOMContentLoaded", async function () {
     const data = window.ROOM_DATA;
     const items = data.items;
     const pre = document.getElementById("room");
@@ -223,60 +272,32 @@
     document.getElementById("src").href = data.top;
 
     // 文字変換のスタイル（scene.js の STYLES。?style=B のように切り替え可）
-    const STYLE_KEY = new URLSearchParams(location.search).get("style") || "F";
-    const STYLE = Scene.STYLES[STYLE_KEY] || Scene.STYLES.F;
-    // 画面幅に応じて解像度（文字数）を決める
-    const COLS = window.innerWidth < 700 ? Math.min(STYLE.cols, 150) : STYLE.cols;
-    const CELL_ASPECT = 1.75;            // セルの 高さ/幅
-    const ROWS = Math.round(COLS / CELL_ASPECT / 1.8);
+    const STYLE_KEY = new URLSearchParams(location.search).get("style") || Scene.DEFAULT_STYLE;
+    const STYLE = Scene.STYLES[STYLE_KEY] || Scene.STYLES[Scene.DEFAULT_STYLE];
+    // ビルドで描いておいた絵が入っていればそれを使う（入れたのは #room のすぐ後の script）。
+    // 無ければ画面幅に応じて解像度（文字数）を決め、ここで描く
+    const prebuilt = !!pre.dataset.cols;
+    const COLS = prebuilt ? Number(pre.dataset.cols) : Scene.colsFor(STYLE, window.innerWidth);
+    const ROWS = Scene.rowsFor(COLS);
+    const CELL_ASPECT = Scene.CELL_ASPECT;
+    if (!prebuilt) {
+      pre.style.setProperty("--cols", COLS);
+      pre.style.setProperty("--rows", ROWS);
+      pre.style.setProperty("--cell", CELL_ASPECT);
+    }
 
     let hot = null;
 
-    // ---- 文字サイズ: COLS 文字がちょうど幅に収まるように ----------------
-    let advance = 0.6;                   // 1 文字の幅 / font-size（実測で更新）
+    // ---- 文字サイズ: 大きさは CSS が --advance（1 文字の幅 / font-size）から決める。フォントを読んだら実測で入れ直す ----
     function measure() {
       const probe = document.createElement("span");
       probe.style.cssText = "position:absolute;visibility:hidden;white-space:pre;font:100px 'JetBrains Mono', ui-monospace, Menlo, monospace";
       probe.textContent = "@".repeat(100);
       document.body.append(probe);
-      advance = probe.getBoundingClientRect().width / 100 / 100;
+      document.documentElement.style.setProperty("--advance", probe.getBoundingClientRect().width / 100 / 100);
       probe.remove();
     }
-    function fit() {
-      const w = pre.parentElement.clientWidth;
-      const fs = w / (COLS * advance);
-      pre.style.fontSize = fs + "px";
-      pre.style.lineHeight = (fs * advance * CELL_ASPECT) + "px";
-      pre.style.height = (fs * advance * CELL_ASPECT * ROWS) + "px";
-    }
-
-    // ---- テキスト化: 同じ色・同じ物の連続をひとつの <span> にまとめる ----
-    const q = (v) => Math.min(255, Math.round(v * 255 / 6) * 6);
-    const hex = (c) => "#" + c.map((v) => q(v).toString(16).padStart(2, "0")).join("");
-    const esc = (c) => (c === "<" ? "&lt;" : c === ">" ? "&gt;" : c === "&" ? "&amp;" : c);
-    function rowHTML(sc, y) {
-      let html = "", run = "", runColor = null, runId = null;
-      const flush = () => {
-        if (!run) return;
-        const idAttr = runId ? ` data-id="${runId}"` : "";
-        html += runColor ? `<span style="color:${runColor}"${idAttr}>${run}</span>` : (idAttr ? `<span${idAttr}>${run}</span>` : run);
-        run = "";
-      };
-      for (let x = 0; x < COLS; x++) {
-        const i = y * COLS + x, c = sc.ch[i];
-        const id = sc.ids[i] && items[sc.ids[i]] ? sc.ids[i] : null;
-        if (c === " ") {               // 空白は色を持たないので直前の塊に混ぜる
-          if (id !== runId) { flush(); runId = id; runColor = null; }
-          run += " "; continue;
-        }
-        const color = hex(sc.col[i]);
-        if (id !== runId || (runColor && color !== runColor)) { flush(); runId = id; }
-        runColor = color;
-        run += esc(c);
-      }
-      flush();
-      return html;
-    }
+    const rowHTML = (sc, y) => Scene.rowHTML(sc, y, items);
 
     // 小物ごとの <span> 一覧（描き終わってから作る）
     let spansById = {};
@@ -614,20 +635,27 @@
       return img;
     }
 
-    // パネルを開く前に、画像と本の一覧・表紙を読んでおく（開いたときにはもう手元にある状態にする）
-    Object.values(items).filter((it) => it.image).forEach((it) => imageFor(it.image, it.imageSize));
+    // パネルを開く前に、画像と本の一覧・表紙を読んでおく（開いたときにはもう手元にある状態にする）。
+    // 部屋の絵やフォントと回線を取り合わないよう、ページを読み終えて手が空いてから始める。
+    // その前にパネルを開いたら、開いたときに取りに行く
     const preloaded = [];
-    Object.values(items).filter((it) => it.booklog).forEach((it) => {
-      loadBooklog(it.booklog)
-        .then((books) => books.forEach((b) => { const im = new Image(); im.src = b.image; preloaded.push(im); }))
-        .catch(() => {});                      // 失敗はパネルを開いたときに改めて扱う
-    });
-    if (window.FILMARKS && Object.values(items).some((it) => it.filmarks)) {
-      window.FILMARKS.works.forEach((w) => { const im = new Image(); im.src = w.image; preloaded.push(im); });
+    function preloadPanels() {
+      Object.values(items).filter((it) => it.image).forEach((it) => imageFor(it.image, it.imageSize));
+      Object.values(items).filter((it) => it.booklog).forEach((it) => {
+        loadBooklog(it.booklog)
+          .then((books) => books.forEach((b) => { const im = new Image(); im.src = b.image; preloaded.push(im); }))
+          .catch(() => {});                    // 失敗はパネルを開いたときに改めて扱う
+      });
+      if (window.FILMARKS && Object.values(items).some((it) => it.filmarks)) {
+        window.FILMARKS.works.forEach((w) => { const im = new Image(); im.src = w.image; preloaded.push(im); });
+      }
+      if (window.GITHUB && Object.values(items).some((it) => it.github)) {
+        window.GITHUB.repos.forEach((r) => { const im = new Image(); im.src = r.image; preloaded.push(im); });
+      }
     }
-    if (window.GITHUB && Object.values(items).some((it) => it.github)) {
-      window.GITHUB.repos.forEach((r) => { const im = new Image(); im.src = r.image; preloaded.push(im); });
-    }
+    const whenIdle = (fn) => (window.requestIdleCallback ? requestIdleCallback(fn, { timeout: 3000 }) : setTimeout(fn, 1000));
+    if (document.readyState === "complete") whenIdle(preloadPanels);
+    else window.addEventListener("load", () => whenIdle(preloadPanels), { once: true });
 
     const idOf = (e) => { const el = e.target.closest && e.target.closest("span[data-id]"); return el ? el.dataset.id : null; };
     pre.addEventListener("mouseover", (e) => setHot(idOf(e)));
@@ -666,82 +694,46 @@
     });
 
 
-    // ---- 寄りの AA: 小物のまわりだけを高い解像度で描き直す ----------------
-    let boxes = {};                      // id -> 本番の絵での範囲（セル）
-    function computeBoxes(sc) {
-      boxes = {};
-      for (let i = 0; i < sc.ids.length; i++) {
-        const id = sc.ids[i]; if (!id || !items[id]) continue;
-        const x = i % COLS, y = (i / COLS) | 0;
-        const b = boxes[id] ||= { x0: x, y0: y, x1: x, y1: y };
-        if (x < b.x0) b.x0 = x; if (x > b.x1) b.x1 = x; if (y < b.y0) b.y0 = y; if (y > b.y1) b.y1 = y;
-      }
-    }
-    function cropHTML(sc, focus) {
-      const out = [];
-      for (let y = 0; y < sc.rows; y++) {
-        let html = "", run = "", runColor = null;
-        const flush = () => { if (run) html += runColor ? `<span style="color:${runColor}">${run}</span>` : run; run = ""; };
-        for (let x = 0; x < sc.cols; x++) {
-          const i = y * sc.cols + x, c = sc.ch[i];
-          if (c === " ") { run += " "; continue; }
-          const k = sc.ids[i] === focus ? 1 : 0.3;      // 主役以外は沈める
-          const color = hex(sc.col[i].map((v) => v * k));
-          if (runColor && color !== runColor) flush();
-          runColor = color; run += esc(c);
-        }
-        flush(); out.push(html);
-      }
-      return out.join("\n");
-    }
-    // 寄りの AA はすべて同じ枠（横 CROP_W 字 × 縦 CROP_H 行）で切り出す
-    const CROP_W = 96, CROP_H = 42;
-    function fitCrop(card) {
-      const w = card.crop.clientWidth;
-      const fs = Math.min(15, w / (CROP_W * advance));
-      const lh = fs * advance * CELL_ASPECT;
-      card.crop.style.fontSize = fs + "px";
-      card.crop.style.lineHeight = lh + "px";
-      card.crop.style.height = (lh * CROP_H) + "px";   // 描く前から高さを確保しておく
-    }
-    async function renderCrop(card) {
-      const b = boxes[card.id]; if (!b) return;
-      const pad = 2, bw = b.x1 - b.x0 + 1 + pad * 2, bh = b.y1 - b.y0 + 1 + pad * 2;
-      // 小物が枠いっぱいに収まる倍率（小さい物ほど大きく寄る）
-      const k = Math.max(1, Math.min(4, CROP_W / bw, CROP_H / bh));
-      const VC = Math.round(COLS * k), VR = Math.round(ROWS * k);
-      // 小物の中心を枠の中心に。絵の端にかかるときは内側へずらす
-      const cx = (b.x0 + b.x1 + 1) / 2 * k, cy = (b.y0 + b.y1 + 1) / 2 * k;
-      const x0 = Math.max(0, Math.min(VC - CROP_W, Math.round(cx - CROP_W / 2)));
-      const y0 = Math.max(0, Math.min(VR - CROP_H, Math.round(cy - CROP_H / 2)));
-      const sc = Scene.stylize(await Scene.render(VC, VR, CELL_ASPECT, null, [x0, y0, x0 + CROP_W, y0 + CROP_H]), STYLE);
-      card.crop.innerHTML = cropHTML(sc, card.id);
+    // ---- 寄りの AA: 小物のまわりだけを高い解像度で描いたもの ----------------
+    // 枠の大きさは CSS（.thing pre.crop）が決める
+    thingsEl.style.setProperty("--crop-w", Scene.CROP_W);
+    thingsEl.style.setProperty("--crop-h", Scene.CROP_H);
+    thingsEl.style.setProperty("--cell", CELL_ASPECT);
+    // 全体の絵の陰影（小物の範囲を出すのに使う）。ここで描いたときは描き終わりに入れる
+    let sceneP = null;
+    const sceneOf = () => sceneP ||= Scene.render(COLS, ROWS, CELL_ASPECT, null).then((b) => Scene.stylize(b, STYLE));
+    // ビルドで描いておいたもの（art/<文字数>/<小物の id>.html）を使う。取れなかったときと ?style= のときはここで描く
+    const builtCrop = (id) => !prebuilt ? Promise.resolve(null)
+      : fetch(`art/${COLS}/${encodeURIComponent(id)}.html`).then((r) => (r.ok ? r.text() : null)).catch(() => null);
+    async function drawnCrop(id) {
+      const sc = await sceneOf();
+      const b = Scene.boxesOf(sc, items)[id];
+      return b ? Scene.cropHTML(id, b, COLS, ROWS, STYLE) : "";
     }
 
-    // ---- レンダリング（上から少しずつ現像する） ------------------------
-    try { await document.fonts.load('12px "JetBrains Mono"'); } catch (_) {}
-    measure();
-    fit();
-    new ResizeObserver(fit).observe(pre.parentElement);
-    let shown = 0;
-    const base = await Scene.render(COLS, ROWS, CELL_ASPECT, (y, part) => new Promise((res) => {
-      const sc = Scene.stylize(part, STYLE, y + 1);
-      let html = "";
-      for (; shown <= y; shown++) html += (shown ? "\n" : "") + rowHTML(sc, shown);
-      pre.insertAdjacentHTML("beforeend", html);
-      indexSpans();
-      requestAnimationFrame(res);
-    }));
-    // 全行がそろってから、隣の行を参照する処理（輪郭のほんのり強調）込みで描き直す
-    const sc = Scene.stylize(base, STYLE);
-    const rows = [];
-    for (let y = 0; y < ROWS; y++) rows.push(rowHTML(sc, y));
-    pre.innerHTML = rows.join("\n");
+    // ---- 部屋の絵 --------------------------------------------------------
+    // 文字の幅はフォントが届いてから測り直す（描くのは待たない）
+    document.fonts.load('12px "JetBrains Mono"').catch(() => {}).then(measure);
+    if (!prebuilt) {
+      // ここで描くときは、上から少しずつ現像する
+      try { await document.fonts.load('12px "JetBrains Mono"'); } catch (_) {}
+      let shown = 0;
+      const base = await Scene.render(COLS, ROWS, CELL_ASPECT, (y, part) => new Promise((res) => {
+        const sc = Scene.stylize(part, STYLE, y + 1);
+        let html = "";
+        for (; shown <= y; shown++) html += (shown ? "\n" : "") + rowHTML(sc, shown);
+        pre.insertAdjacentHTML("beforeend", html);
+        requestAnimationFrame(res);
+      }));
+      // 全行がそろってから、隣の行を参照する処理（輪郭のほんのり強調）込みで描き直す
+      const sc = Scene.stylize(base, STYLE);
+      sceneP = Promise.resolve(sc);
+      pre.innerHTML = Scene.roomHTML(sc, items);
+    }
     indexSpans();
     pre.dataset.ready = "1";             // 描き終わり（確認用の目印）
 
-    // スクロールして見えてきたカードから順に、寄りの AA を描いてふわっと出す
-    computeBoxes(sc);
+    // スクロールして見えてきたカードから順に、寄りの AA を入れてふわっと出す
     let queue = Promise.resolve();
     const io = new IntersectionObserver((entries) => {
       for (const e of entries) {
@@ -749,12 +741,15 @@
         const card = cards.find((c) => c.li === e.target);
         io.unobserve(card.li);
         card.li.classList.add("in");
-        queue = queue.then(() => renderCrop(card)).then(() => new Promise(requestAnimationFrame));
+        const built = builtCrop(card.id);    // 読み込みはすぐ始め、入れるのは見えた順に 1 枚ずつ
+        queue = queue.then(async () => {
+          const html = (await built) ?? await drawnCrop(card.id);
+          card.crop.innerHTML = html;
+        }).then(() => new Promise(requestAnimationFrame));
       }
     }, { rootMargin: "0px 0px 200px 0px" });
-    cards.forEach((c) => { fitCrop(c); io.observe(c.li); });
-    new ResizeObserver(() => cards.forEach(fitCrop)).observe(thingsEl);
-  })();
+    cards.forEach((c) => io.observe(c.li));
+  });
   </script>
 </body>
 </html>
