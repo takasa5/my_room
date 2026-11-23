@@ -24,6 +24,8 @@
     color-scheme: dark;
     --bg: #15171c; --ink: #6b7382; --ink-strong: #c9ced8; --hot: #f2b45a;
     --panel: #1d2027; --line: #343a45; --night: #7f9cc9;
+    /* 文字に使う灰色。--ink は点描の地の色なので、文字には背景・パネルとのコントラストが 4.5:1 を超えるこちらを使う */
+    --muted: #808a9b;
   }
 
   * { box-sizing: border-box; }
@@ -75,9 +77,9 @@
   dialog::backdrop { background: rgba(10, 10, 14, .45); }
   .panel-head {
     display: flex; justify-content: flex-end; align-items: center;
-    padding: 10px 14px; border-bottom: 1px dashed var(--line); font-size: 12px; color: var(--ink);
+    padding: 10px 14px; border-bottom: 1px dashed var(--line); font-size: 12px; color: var(--muted);
   }
-  .panel-head button { font: inherit; background: none; border: none; color: var(--ink); cursor: pointer; font-size: 14px; }
+  .panel-head button { font: inherit; background: none; border: none; color: var(--muted); cursor: pointer; font-size: 14px; }
   .panel-body { padding: 16px 18px 20px; }
   .panel-body h2 { font-size: 17px; margin: 0 0 14px; }
   .panel-body ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
@@ -98,7 +100,7 @@
   .panel-body .posts { margin-top: 14px; gap: 0; }
   .panel-body .posts a { border: none; border-bottom: 1px dashed var(--line); border-radius: 0; padding: 8px 2px; }
   .panel-body .posts a::before { content: none; }
-  .panel-body .posts .meta { display: block; font-size: 11px; color: var(--ink); margin-bottom: 2px; }
+  .panel-body .posts .meta { display: block; font-size: 11px; color: var(--muted); margin-bottom: 2px; }
   .panel-body .posts a:hover .meta, .panel-body .posts a:focus-visible .meta { color: inherit; }
   /* GitHub の草（1 列 = 1 週、上が日曜）。濃さは 0〜4 の 5 段階 */
   .panel-body .grass { display: grid; grid-auto-flow: column; grid-template-rows: repeat(7, 1fr); gap: 2px; margin-top: 14px; }
@@ -106,7 +108,7 @@
   .panel-body .grass .l1 { background: #5a4526; } .panel-body .grass .l2 { background: #8a6530; }
   .panel-body .grass .l3 { background: #c08a40; } .panel-body .grass .l4 { background: var(--hot); }
   .panel-body a.grass-note {
-    border: none; padding: 0; margin-top: 6px; font-size: 11px; color: var(--ink); text-align: right;
+    border: none; padding: 0; margin-top: 6px; font-size: 11px; color: var(--muted); text-align: right;
   }
   .panel-body a.grass-note::before { content: none; }
   .panel-body .repos { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 14px; }
@@ -115,18 +117,18 @@
   .panel-body .sleep { margin-top: 4px; }
   .panel-body .sleep .stats { display: grid; grid-template-columns: repeat(3, auto) 1fr; column-gap: 20px; align-items: end; margin-bottom: 10px; }
   .panel-body .sleep .stats div { display: flex; flex-direction: column; gap: 2px; }
-  .panel-body .sleep .stats small { font-size: 10px; color: var(--ink); letter-spacing: .04em; }
+  .panel-body .sleep .stats small { font-size: 10px; color: var(--muted); letter-spacing: .04em; }
   .panel-body .sleep .stats b { font-size: 16px; }
   .panel-body .sleep .stats .bed b { color: var(--night); }
   .panel-body .sleep .stats .wake b { color: var(--hot); }
-  .panel-body .sleep .stats .span { font-size: 10px; color: var(--ink); text-align: right; }
+  .panel-body .sleep .stats .span { font-size: 10px; color: var(--muted); text-align: right; }
   /* 長さ（7h 01m）は単位だけ小さく灰色にして、時刻（1:27）と見分けられるようにする */
-  .panel-body .sleep .u { font-size: .68em; font-weight: 400; color: var(--ink); margin-left: 1px; }
+  .panel-body .sleep .u { font-size: .68em; font-weight: 400; color: var(--muted); margin-left: 1px; }
   .panel-body .sleep svg { display: block; width: 100%; height: auto; overflow: visible; touch-action: pan-y; }
   .panel-body .sleep svg text { font-family: inherit; }
-  .panel-body .sleep .readout { font-size: 11px; color: var(--ink); margin-top: 6px; display: flex; justify-content: space-between; gap: 8px; }
+  .panel-body .sleep .readout { font-size: 11px; color: var(--muted); margin-top: 6px; display: flex; justify-content: space-between; gap: 8px; }
   .panel-body .sleep .readout .now { color: var(--ink-strong); white-space: nowrap; }
-  .panel-body .sleep .readout .now.none { color: var(--ink); }
+  .panel-body .sleep .readout .now.none { color: var(--muted); }
   .panel-body .sleep .readout .u { font-size: .85em; }
   /* 日記帳は見開き（2 ページ）を並べるので、パネルを広げる */
   dialog.wide { width: min(860px, calc(100vw - 32px)); }
@@ -140,9 +142,9 @@
   .panel-body .spread .leaf:first-child :is(img, .ph) { border-radius: 4px 0 0 4px; }
   .panel-body .spread .leaf:last-child :is(img, .ph) { border-radius: 0 4px 4px 0; }
   .panel-body .spread .leaf:hover img, .panel-body .spread .leaf:focus-visible img { outline: 1px solid var(--hot); outline-offset: -1px; }
-  .panel-body .spread .leaf .cap { display: block; font-size: 11px; color: var(--ink); margin-top: 4px; text-align: center; }
+  .panel-body .spread .leaf .cap { display: block; font-size: 11px; color: var(--muted); margin-top: 4px; text-align: center; }
   .panel-body .spread .leaf:hover .cap, .panel-body .spread .leaf:focus-visible .cap { color: var(--hot); }
-  .panel-body .diary-nav { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 10px; font-size: 12px; color: var(--ink); }
+  .panel-body .diary-nav { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 10px; font-size: 12px; color: var(--muted); }
   .panel-body .diary-nav button {
     font: inherit; background: none; color: var(--ink-strong); cursor: pointer;
     border: 1px solid var(--line); border-radius: 4px; padding: 6px 12px;
@@ -174,7 +176,7 @@
   .thing .card:focus-visible { outline: 1px solid var(--hot); outline-offset: 8px; }
   @media (prefers-reduced-motion: reduce) { .thing { transition: none; opacity: 1; transform: none; } }
 
-  footer { margin-top: 28px; font-size: 11px; color: var(--ink); }
+  footer { margin-top: 28px; font-size: 11px; color: var(--muted); }
   footer a { color: inherit; }
 </style>
 </head>
@@ -519,10 +521,10 @@
           <clipPath id="sleep-plot"><rect x="${L}" y="${T}" width="${W - L - R}" height="${H - T - B}"/></clipPath></defs>`;
         for (let m = Y0; m <= Y1; m += 120) {
           s += `<line x1="${L}" x2="${W - R}" y1="${f(y(m))}" y2="${f(y(m))}" stroke="#262a33"/>`;
-          if (m % 240 === 0) s += `<text x="${L - 6}" y="${f(y(m) + 3)}" font-size="9" fill="#6b7382" text-anchor="end">${clock(m)}</text>`;
+          if (m % 240 === 0) s += `<text x="${L - 6}" y="${f(y(m) + 3)}" font-size="9" fill="var(--muted)" text-anchor="end">${clock(m)}</text>`;
         }
         nights.forEach((n, i) => {
-          if (n.date.getUTCDate() === 1) s += `<line x1="${f(x(i))}" x2="${f(x(i))}" y1="${T}" y2="${H - B}" stroke="#262a33" stroke-dasharray="2 3"/><text x="${f(x(i) + 3)}" y="${H - 6}" font-size="9" fill="#6b7382">${MON[n.date.getUTCMonth()]}</text>`;
+          if (n.date.getUTCDate() === 1) s += `<line x1="${f(x(i))}" x2="${f(x(i))}" y1="${T}" y2="${H - B}" stroke="#262a33" stroke-dasharray="2 3"/><text x="${f(x(i) + 3)}" y="${H - 6}" font-size="9" fill="var(--muted)">${MON[n.date.getUTCMonth()]}</text>`;
         });
         s += `<g clip-path="url(#sleep-plot)">`;
         // 毎晩の記録は背景にかすかに
