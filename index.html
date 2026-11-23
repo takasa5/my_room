@@ -35,6 +35,9 @@
 
   * { box-sizing: border-box; }
   html, body { margin: 0; }
+  /* 縦スクロールバーの場所を最初から取っておく。一覧（script が後から作る）でページが伸びてスクロールバーが出ると、
+     幅が縮み、幅から大きさを決めている点描の文字がすべて動いてしまう */
+  html { scrollbar-gutter: stable; }
   body {
     background: var(--bg);
     color: var(--ink-strong);
