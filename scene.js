@@ -809,6 +809,97 @@
     return base;
   }
 
-  const api = { render, stylize, STYLES };
+  // ---- 画面の格子と HTML 化 ------------------------------------------------
+  // index.html（?style= で別の版を選んだとき）と、ビルド（scripts/build-site.js が採用中の版を描いておく）の両方が使う。
+  const DEFAULT_STYLE = "F";
+  const CELL_ASPECT = 1.75;              // セルの 高さ/幅
+  const NARROW = { width: 700, cols: 150 };   // 画面幅がこれ未満なら、描く文字数を cols までに減らす
+  const CROP_W = 96, CROP_H = 42;        // 一覧の寄りの AA の枠（横 CROP_W 字 × 縦 CROP_H 行）
+  const colsFor = (st, viewportWidth) => (viewportWidth < NARROW.width ? Math.min(st.cols, NARROW.cols) : st.cols);
+  const rowsFor = (cols) => Math.round(cols / CELL_ASPECT / 1.8);
+
+  const q = (v) => Math.min(255, Math.round(v * 255 / 6) * 6);
+  const hex = (c) => "#" + c.map((v) => q(v).toString(16).padStart(2, "0")).join("");
+  const esc = (c) => (c === "<" ? "&lt;" : c === ">" ? "&gt;" : c === "&" ? "&amp;" : c);
+
+  /** 絵の y 行目を HTML にする。同じ色・同じ物の連続をひとつの <span> にまとめ、items にある物には data-id を付ける */
+  function rowHTML(sc, y, items) {
+    let html = "", run = "", runColor = null, runId = null;
+    const flush = () => {
+      if (!run) return;
+      const idAttr = runId ? ` data-id="${runId}"` : "";
+      html += runColor ? `<span style="color:${runColor}"${idAttr}>${run}</span>` : (idAttr ? `<span${idAttr}>${run}</span>` : run);
+      run = "";
+    };
+    for (let x = 0; x < sc.cols; x++) {
+      const i = y * sc.cols + x, c = sc.ch[i];
+      const id = sc.ids[i] && items[sc.ids[i]] ? sc.ids[i] : null;
+      if (c === " ") {               // 空白は色を持たないので直前の塊に混ぜる
+        if (id !== runId) { flush(); runId = id; runColor = null; }
+        run += " "; continue;
+      }
+      const color = hex(sc.col[i]);
+      if (id !== runId || (runColor && color !== runColor)) { flush(); runId = id; }
+      runColor = color;
+      run += esc(c);
+    }
+    flush();
+    return html;
+  }
+  const roomHTML = (sc, items) => Array.from({ length: sc.rows }, (_, y) => rowHTML(sc, y, items)).join("\n");
+
+  /** 小物ごとの範囲（セル） */
+  function boxesOf(sc, items) {
+    const boxes = {};
+    for (let i = 0; i < sc.ids.length; i++) {
+      const id = sc.ids[i]; if (!id || !items[id]) continue;
+      const x = i % sc.cols, y = (i / sc.cols) | 0;
+      const b = boxes[id] ||= { x0: x, y0: y, x1: x, y1: y };
+      if (x < b.x0) b.x0 = x; if (x > b.x1) b.x1 = x; if (y < b.y0) b.y0 = y; if (y > b.y1) b.y1 = y;
+    }
+    return boxes;
+  }
+
+  /** 寄りの AA: 小物 focus のまわりだけを高い解像度で描き直し、HTML にする。主役以外は沈める */
+  async function cropHTML(focus, box, cols, rows, st) {
+    const pad = 2, bw = box.x1 - box.x0 + 1 + pad * 2, bh = box.y1 - box.y0 + 1 + pad * 2;
+    // 小物が枠いっぱいに収まる倍率（小さい物ほど大きく寄る）
+    const k = Math.max(1, Math.min(4, CROP_W / bw, CROP_H / bh));
+    const VC = Math.round(cols * k), VR = Math.round(rows * k);
+    // 小物の中心を枠の中心に。絵の端にかかるときは内側へずらす
+    const cx = (box.x0 + box.x1 + 1) / 2 * k, cy = (box.y0 + box.y1 + 1) / 2 * k;
+    const x0 = Math.max(0, Math.min(VC - CROP_W, Math.round(cx - CROP_W / 2)));
+    const y0 = Math.max(0, Math.min(VR - CROP_H, Math.round(cy - CROP_H / 2)));
+    const sc = stylize(await render(VC, VR, CELL_ASPECT, null, [x0, y0, x0 + CROP_W, y0 + CROP_H]), st);
+    const out = [];
+    for (let y = 0; y < sc.rows; y++) {
+      let html = "", run = "", runColor = null;
+      const flush = () => { if (run) html += runColor ? `<span style="color:${runColor}">${run}</span>` : run; run = ""; };
+      for (let x = 0; x < sc.cols; x++) {
+        const i = y * sc.cols + x, c = sc.ch[i];
+        if (c === " ") { run += " "; continue; }
+        const kk = sc.ids[i] === focus ? 1 : 0.3;
+        const color = hex(sc.col[i].map((v) => v * kk));
+        if (runColor && color !== runColor) flush();
+        runColor = color; run += esc(c);
+      }
+      flush(); out.push(html);
+    }
+    return out.join("\n");
+  }
+
+  /** 採用中の版を cols 文字幅で描き切り、絵と寄りの AA の HTML を返す（ビルド用） */
+  async function prerender(items, cols) {
+    const st = STYLES[DEFAULT_STYLE], rows = rowsFor(cols);
+    const sc = stylize(await render(cols, rows, CELL_ASPECT, null), st);
+    const boxes = boxesOf(sc, items), crops = {};
+    for (const id of Object.keys(items)) crops[id] = boxes[id] ? await cropHTML(id, boxes[id], cols, rows, st) : "";   // 絵に出ていない物は空
+    return { cols, rows, html: roomHTML(sc, items), crops };
+  }
+
+  const api = {
+    render, stylize, STYLES, DEFAULT_STYLE, CELL_ASPECT, NARROW, CROP_W, CROP_H,
+    colsFor, rowsFor, rowHTML, roomHTML, boxesOf, cropHTML, prerender
+  };
   if (typeof module !== "undefined") module.exports = api; else window.Scene = api;
 })();

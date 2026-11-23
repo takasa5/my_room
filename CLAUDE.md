@@ -3,6 +3,7 @@
 自己紹介ページ（Notion）への入口になる静的サイト。GitHub Pages で公開している。
 
 * `index.html`：画面と操作。`scene.js`：部屋を文字の点描で描く。`data.js`：小物と Notion ページの対応表
+* `fonts/`：JetBrains Mono（ラテン文字の可変フォント）と、そのライセンス（`OFL.txt`）。Google Fonts は使わず自前で配信する
 * `filmarks.js` は `scripts/fetch-filmarks.mjs` が作る（`.github/workflows/update-data.yml` が毎日更新する）。手で書き換えない
 * `github.js` は `scripts/fetch-github.mjs` が作る（`.github/workflows/update-data.yml` が毎日更新する）。手で書き換えない
 * `diary.js` は `scripts/fetch-diary.mjs` が公開 Notion サイトの Paper Diary から作る（`.github/workflows/update-data.yml` が毎日更新する）。手で書き換えない
@@ -23,6 +24,8 @@
 ## 公開
 
 main に push すると `.github/workflows/deploy.yml` が、テストを通したうえで `scripts/build-site.js` の `FILES` にあるファイルだけを GitHub Pages に置く。ページが読むファイルを増やしたら `FILES` に足す（E2E も同じ公開物を配信するので、足し忘れると E2E が失敗する）。
+
+部屋の絵は表示を速くするため、`build-site.js` が `scene.js` の採用中の版（`Scene.DEFAULT_STYLE`）で描いておく。画面幅ごとの絵は公開する `index.html` の `<!-- room-art -->` に `<template>` で入れ、一覧の寄りの AA は `art/<文字数>/<小物の id>.html` に書く。`?style=` で別の版を選んだときや、リポジトリの `index.html` をそのまま開いたときは、ページがその場で描く。絵も描いたものも生成物なのでコミットしない。
 
 ## E2E
 
