@@ -43,12 +43,11 @@ if (!isObj(data)) {
     for (const [id, it] of Object.entries(data.items)) {
       const w = `items.${id}`;
       if (!isObj(it)) { fail(w, "オブジェクトにする"); continue; }
-      checkKeys(w, it, ["furniture", "title", "links", "image", "imageSize", "imageLink", "booklog", "filmarks", "github", "posts", "diary", "sleep"]);
+      checkKeys(w, it, ["title", "links", "image", "imageSize", "imageLink", "booklog", "filmarks", "github", "posts", "diary", "sleep"]);
 
       // 押しても反応しない家具にならないよう、scene.js に同じ id の家具があること
       if (!sceneIds.has(id)) fail(w, `scene.js に id "${id}" の家具がない`);
 
-      if (!isText(it.furniture)) fail(`${w}.furniture`, "空でない文字列にする");
       if (!isText(it.title)) fail(`${w}.title`, "空でない文字列にする");
 
       // links は省ける（一覧のカードは links[0] を開き、ないときはパネルを開く）。ただしパネルに何も出ない小物にはしない

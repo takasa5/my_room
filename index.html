@@ -67,7 +67,7 @@
   }
   dialog::backdrop { background: rgba(10, 10, 14, .45); }
   .panel-head {
-    display: flex; justify-content: space-between; align-items: center;
+    display: flex; justify-content: flex-end; align-items: center;
     padding: 10px 14px; border-bottom: 1px dashed var(--line); font-size: 12px; color: var(--ink);
   }
   .panel-head button { font: inherit; background: none; border: none; color: var(--ink); cursor: pointer; font-size: 14px; }
@@ -143,9 +143,8 @@
   .panel-body .diary-nav button:hover:not(:disabled), .panel-body .diary-nav button:focus-visible { border-color: var(--hot); color: var(--hot); }
   .panel-body .diary-nav button:disabled { opacity: .35; cursor: default; }
 
-  /* ---- 部屋にあるもの: スクロールすると小物の寄りの AA と説明が順に現れる ---- */
+  /* ---- 小物の一覧: スクロールすると小物の寄りの AA と名前が順に現れる ---- */
   .things { width: 100%; max-width: 1200px; margin-top: 96px; }
-  .things > h2 { font-size: 12px; font-weight: 400; color: var(--ink); letter-spacing: .12em; margin: 0 0 40px; }
   .things ol {
     list-style: none; margin: 0; padding: 0;
     display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 64px 44px;
@@ -159,7 +158,6 @@
     font-variant-ligatures: none; font-feature-settings: "liga" 0, "calt" 0;
     color: var(--ink);
   }
-  .thing .kind { font-size: 11px; color: var(--ink); margin: 0; }
   .thing h3 { font-size: 15px; margin: 4px 0 8px; font-weight: 700; }
   .thing .card { display: block; height: 100%; color: inherit; text-decoration: none; }
   /* リンク先のない小物のカードは、押すとパネルを開くボタン */
@@ -175,17 +173,15 @@
 </head>
 <body>
   <div class="stage">
-    <pre id="room" aria-label="夕暮れのデスクを文字の点描で描いた絵。小物を押すとページが開きます。下の「部屋にあるもの」にも同じ内容があります。"></pre>
+    <pre id="room" aria-label="夕暮れのデスクを文字の点描で描いた絵。小物を押すとページが開きます。下の一覧にも同じ内容があります。"></pre>
   </div>
 
-  <section class="things" aria-labelledby="things-title">
-    <h2 id="things-title">部屋にあるもの</h2>
+  <section class="things" aria-label="小物の一覧">
     <ol id="things"></ol>
   </section>
 
   <dialog id="panel" aria-labelledby="panel-title">
     <div class="panel-head">
-      <span id="panel-kind"></span>
       <button type="button" id="panel-close" aria-label="閉じる">[x]</button>
     </div>
     <div class="panel-body">
@@ -197,13 +193,13 @@
 
   <footer>source: <a id="src" href="#" target="_blank" rel="noopener">Notion</a></footer>
 
-  <script src="data.js?v=17"></script>
+  <script src="data.js?v=18"></script>
   <script src="filmarks.js"></script>
   <script src="github.js"></script>
   <script src="posts.js"></script>
   <script src="diary.js"></script>
   <script src="sleep.js"></script>
-  <script src="scene.js?v=23"></script>
+  <script src="scene.js?v=24"></script>
   <script>
   (async function () {
     const data = window.ROOM_DATA;
@@ -302,7 +298,6 @@
       const it = items[id];
       pushAnim(id);
       setTimeout(() => {
-        document.getElementById("panel-kind").textContent = it.furniture;
         document.getElementById("panel-title").textContent = it.title;
         document.getElementById("panel-links").replaceChildren(...(it.links || []).map((l) => {
           const li = document.createElement("li"), a = document.createElement("a");
@@ -635,14 +630,14 @@
       e.preventDefault(); diary.turn(e.key === "ArrowLeft" ? -1 : 1);
     });
 
-    // ---- 部屋にあるもの（カード） ----------------------------------------
+    // ---- 小物の一覧（カード） ----------------------------------------
     const thingsEl = document.getElementById("things");
     const cards = Object.entries(items).map(([id, it]) => {
       const li = document.createElement("li");
       li.className = "thing";
-      // カード全体（寄りの AA と説明）が 1 つのリンク
+      // カード全体（寄りの AA と名前）が 1 つのリンク
       // リンク先がない小物（目覚まし時計）は、押すとパネルを開くボタンにする
-      const inner = `<pre class="crop" aria-hidden="true"></pre><p class="kind"></p><h3></h3>`;
+      const inner = `<pre class="crop" aria-hidden="true"></pre><h3></h3>`;
       if (it.links && it.links.length) {
         li.innerHTML = `<a class="card" target="_blank" rel="noopener">${inner}</a>`;
         li.querySelector("a.card").href = it.links[0].url;
@@ -650,7 +645,6 @@
         li.innerHTML = `<button type="button" class="card">${inner}</button>`;
         li.querySelector("button.card").addEventListener("click", () => open(id));
       }
-      li.querySelector(".kind").textContent = it.furniture;
       li.querySelector("h3").textContent = it.title;
       const crop = li.querySelector("pre.crop");
       thingsEl.append(li);
