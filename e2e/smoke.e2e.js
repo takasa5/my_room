@@ -103,6 +103,12 @@ test("部屋が描け、すべての小物とカードがある", () => withPage
   const cards = await page.$$eval("#things .card", (els) => els.map((el) => (el.tagName === "A" ? el.href : null)));
   assert.deepEqual(cards, ids.map((id) => data.items[id].links?.[0].url ?? null), "カードのリンクが data.js と違う");
 
+  // 読み上げでは、点描は 1 枚の絵で、中の 1 万字を超える文字は読ませない。ページの見出しと main がある
+  const tree = await page.locator("body").ariaSnapshot();
+  assert.ok(tree.length < 5000, `点描の文字が読み上げに出ている（${tree.length} 字）`);
+  assert.equal(await page.getByRole("img", { name: /点描/ }).count(), 1, "点描が絵として読み上げられない");
+  assert.equal(await page.locator("main").getByRole("heading", { level: 1 }).count(), 1, "main の中に h1 がない");
+
   // OGP の画像はページが読まないので、公開物（FILES）に入っているかをここで見る
   const og = await page.$eval('meta[property="og:image"]', (m) => m.content);
   const url = await page.$eval('meta[property="og:url"]', (m) => m.content);
