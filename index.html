@@ -37,6 +37,13 @@
     padding: 24px 16px 40px;
   }
 
+  /* 画面には出さず、読み上げにだけ渡す（ページの見出しなど） */
+  .sr-only {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+  }
+  main { width: 100%; display: flex; flex-direction: column; align-items: center; }
+
   .stage {
     width: 100%; max-width: 1200px;
     position: relative;
@@ -172,17 +179,22 @@
 </style>
 </head>
 <body>
-  <div class="stage">
-    <pre id="room" aria-label="夕暮れのデスクを文字の点描で描いた絵。小物を押すとページが開きます。下の一覧にも同じ内容があります。"></pre>
+  <main>
+  <h1 class="sr-only">My Room</h1>
+  <!-- 点描は 1 万字を超える文字なので、読み上げでは外側を 1 枚の絵として扱い、中の文字は隠す（pre に role="img" だけでは子の文字が残る） -->
+  <div class="stage" role="img" aria-label="夕暮れのデスクを文字の点描で描いた絵。小物を押すとページが開きます。下の一覧にも同じ内容があります。">
+    <pre id="room" aria-hidden="true"></pre>
   </div>
 
-  <section class="things" aria-label="小物の一覧">
+  <section class="things" aria-labelledby="things-title">
+    <h2 id="things-title" class="sr-only">小物の一覧</h2>
     <ol id="things"></ol>
   </section>
+  </main>
 
   <dialog id="panel" aria-labelledby="panel-title">
     <div class="panel-head">
-      <button type="button" id="panel-close" aria-label="閉じる">[x]</button>
+      <button type="button" id="panel-close" aria-label="[x] 閉じる">[x]</button>
     </div>
     <div class="panel-body">
       <h2 id="panel-title"></h2>
