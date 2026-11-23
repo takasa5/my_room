@@ -293,13 +293,6 @@
     B(-1.3 + i * 0.07, 0.9, z, -1.23 + i * 0.07, RY, z + 0.04, curtain, "window");
   }
 
-  // 窓辺の芽（Pre-favorites）
-  C(-0.25, 0.7, 0.04, 1.02, 1.09, M([0.72, 0.38, 0.22]), "plant");
-  C(-0.25, 0.7, 0.036, 1.09, 1.092, M([0.25, 0.16, 0.1]), "plant");
-  C(-0.25, 0.7, 0.004, 1.09, 1.16, M([0.3, 0.55, 0.22]), "plant");
-  S(-0.27, 1.16, 0.7, 0.018, M([0.38, 0.66, 0.26]), "plant");
-  S(-0.23, 1.15, 0.7, 0.016, M([0.32, 0.6, 0.24]), "plant");
-
   // ポスター（Movie）とカレンダー（History）
   const POSTER_TEX = { happy: tex.posterHappy };
   B(POSTER_TALL.x0, POSTER_TALL.y0, 0.73, POSTER_TALL.x1, POSTER_TALL.y1, RZ1,
