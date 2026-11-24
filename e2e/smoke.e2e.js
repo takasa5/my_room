@@ -89,7 +89,12 @@ async function withPage(name, opts, fn) {
 const roomData = (page) => page.evaluate(() => window.ROOM_DATA);
 
 async function openPanel(page, id) {
-  await page.locator(`#room span[data-id="${id}"]`).first().click();
+  // 小物の文字は隣の文字と少し重なることがある（狭い幅や環境のフォントによる）ので、真ん中がほかの文字に隠れていないものを押す
+  const i = await page.evaluate((id) => [...document.querySelectorAll(`#room span[data-id="${id}"]`)].findIndex((el) => {
+    const r = el.getBoundingClientRect();
+    return document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2) === el;
+  }), id);
+  await page.locator(`#room span[data-id="${id}"]`).nth(Math.max(i, 0)).click();
   await page.waitForSelector("#panel[open]");
   return page.locator("#panel");
 }
