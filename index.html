@@ -390,8 +390,32 @@
       if (id) spansOf(id).forEach((el) => el.classList.add("hot"));
       pre.classList.toggle("hovering", !!id);
     }
-    function open(id) {
+    // ---- 開いているパネルを URL（?item=<id>）に載せる ----------------------
+    // 開くと履歴を 1 つ積むので、ブラウザの戻るで閉じ、進むでまた開く。URL を共有すればそのパネルが開いた状態で始まる
+    const ITEM_PARAM = "item";
+    const itemInURL = () => { const id = new URLSearchParams(location.search).get(ITEM_PARAM); return id && Object.hasOwn(items, id) ? id : null; };
+    function urlWith(id) {
+      const u = new URL(location.href);
+      if (id) u.searchParams.set(ITEM_PARAM, id); else u.searchParams.delete(ITEM_PARAM);
+      return u.pathname + u.search + u.hash;
+    }
+    let closingByHistory = false;              // 戻るで閉じるときは、閉じた後に履歴を触らない
+    panel.addEventListener("close", () => {
+      if (closingByHistory) { closingByHistory = false; return; }
+      if (!itemInURL()) return;
+      // このページで開いたなら戻る（開く前の履歴に戻す）。URL から開いて始まったなら、戻るとページを離れるので書き換える
+      if (history.state && history.state.panel) history.back();
+      else history.replaceState(null, "", urlWith(null));
+    });
+    window.addEventListener("popstate", () => {
+      const id = itemInURL();
+      if (id) { if (!panel.open) open(id, { fromHistory: true }); }
+      else if (panel.open) { closingByHistory = true; panel.close(); }
+    });
+
+    function open(id, { fromHistory = false } = {}) {
       const it = items[id];
+      if (!fromHistory && itemInURL() !== id) history.pushState({ panel: id }, "", urlWith(id));
       pushAnim(id);
       setTimeout(() => {
         document.getElementById("panel-title").textContent = it.title;
@@ -796,6 +820,7 @@
       const id = idOf(e); if (id) open(id);
     });
     document.getElementById("panel-close").addEventListener("click", () => panel.close());
+    { const id = itemInURL(); if (id) open(id, { fromHistory: true }); }   // ?item=<id> で来たら、そのパネルを開いて始める
     panel.addEventListener("click", (e) => { if (e.target === panel) panel.close(); });
     panel.addEventListener("keydown", (e) => {        // 日記帳は ← → でもめくれる
       const diary = panel.querySelector(".diary");
