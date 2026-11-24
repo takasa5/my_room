@@ -89,7 +89,12 @@ async function withPage(name, opts, fn) {
 const roomData = (page) => page.evaluate(() => window.ROOM_DATA);
 
 async function openPanel(page, id) {
-  await page.locator(`#room span[data-id="${id}"]`).first().click();
+  // 小物の文字は隣の文字と少し重なることがある（狭い幅や環境のフォントによる）ので、真ん中がほかの文字に隠れていないものを押す
+  const i = await page.evaluate((id) => [...document.querySelectorAll(`#room span[data-id="${id}"]`)].findIndex((el) => {
+    const r = el.getBoundingClientRect();
+    return document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2) === el;
+  }), id);
+  await page.locator(`#room span[data-id="${id}"]`).nth(Math.max(i, 0)).click();
   await page.waitForSelector("#panel[open]");
   return page.locator("#panel");
 }
@@ -226,12 +231,18 @@ test("目覚まし時計を押すと睡眠のリボンが出て、触った晩�
   assert.equal(await panel.locator("#panel-links a").count(), 0);
 }));
 
-test("ヘッドホンを押すと last.fm の画像が出る", () => withPage("audio", {}, async (page) => {
+test("ヘッドホンを押すと last.fm の画像と、行ったライブの半券が出る", () => withPage("audio", {}, async (page) => {
   const data = await roomData(page);
   const panel = await openPanel(page, "audio");
   const link = panel.locator("a.image-link");
   assert.equal(await link.getAttribute("href"), data.items.audio.imageLink);
   await link.locator("img").waitFor();
+
+  const lives = await page.evaluate(() => window.LIVES);
+  assert.deepEqual(await panel.locator(".lives a.stub").evaluateAll((as) => as.map((a) => a.href)), lives.lives.map((l) => l.url));
+  assert.equal(await panel.locator(".lives a.stub .shot img").count(), lives.lives.filter((l) => l.image).length);
+  assert.equal(await panel.locator(".lives .years i").count(), lives.years.length);
+  assert.equal(await panel.locator(".lives a.lives-more").getAttribute("href"), lives.url);
 }));
 
 test("外部が全部落ちていても、部屋が描けてパネルが開く", () => withPage("offline", { offline: true }, async (page) => {
@@ -255,9 +266,22 @@ test("外部が全部落ちていても、部屋が描けてパネルが開く",
   assert.ok(await diary.locator(".spread a.leaf .ph").count() > 0);
   await diary.locator('button[aria-label="前の見開き"]').click();
   assert.equal(await diary.locator(".spread a.leaf").count(), 2);
+
+  // ライブの写真が取れなくても、半券（リンクと文字）は残る
+  await page.click("#panel-close");
+  await page.waitForSelector("#panel[open]", { state: "detached" });
+  const music = await openPanel(page, "audio");
+  await page.waitForFunction(() => !document.querySelector("#panel .stub img"));
+  const stubs = await page.evaluate(() => window.LIVES.lives.length);
+  assert.equal(await music.locator(".lives a.stub .shot .note").count(), stubs);
 }));
 
 test("スマホの幅でも横にはみ出さない", () => withPage("mobile", { viewport: { width: 375, height: 812 } }, async (page) => {
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   assert.ok(overflow <= 0, `横に ${overflow}px はみ出している`);
+  // 広いパネル（音楽: last.fm とライブを並べる）も、狭い幅では縦に積んで収まる
+  await openPanel(page, "audio");
+  await page.waitForSelector("#panel .lives a.stub");
+  const panelOverflow = await page.evaluate(() => { const p = document.getElementById("panel"); return p.scrollWidth - p.clientWidth; });
+  assert.ok(panelOverflow <= 0, `パネルが横に ${panelOverflow}px はみ出している`);
 }));

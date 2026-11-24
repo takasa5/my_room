@@ -11,7 +11,7 @@ const vm = require("node:vm");
 const Scene = require("../scene.js");
 
 const FILES = [
-  "index.html", "data.js", "filmarks.js", "github.js", "posts.js", "diary.js", "sleep.js", "scene.js", "social-preview.png",
+  "index.html", "data.js", "filmarks.js", "github.js", "posts.js", "diary.js", "sleep.js", "lives.js", "scene.js", "social-preview.png",
   "fonts/JetBrainsMono-latin.woff2", "fonts/OFL.txt"
 ];
 

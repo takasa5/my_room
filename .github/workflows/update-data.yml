@@ -1,4 +1,4 @@
-# 外部サイトのデータ（filmarks.js・github.js・posts.js・diary.js・sleep.js）を取り直して、まとめて 1 回だけコミット・デプロイする。
+# 外部サイトのデータ（filmarks.js・github.js・posts.js・diary.js・sleep.js・lives.js）を取り直して、まとめて 1 回だけコミット・デプロイする。
 # どれもブラウザから直接は読めない（API がない・トークンが要る・CORS）ので、ここで取得して静的ファイルとしてコミットする。
 #
 # 取得は取得先ごとに別の job で動かす。1 つが壊れても残りは更新し、壊れた job だけが赤くなる
@@ -42,6 +42,9 @@ jobs:
           - name: Sleep
             file: sleep.js
             run: node scripts/fetch-sleep.mjs 26
+          - name: Lives
+            file: lives.js
+            run: node scripts/fetch-lives.mjs 3 3
     steps:
       - uses: actions/checkout@v7.0.1
         with:
@@ -108,7 +111,7 @@ jobs:
       - name: Commit if changed
         id: commit
         run: |
-          files="filmarks.js github.js posts.js diary.js sleep.js"
+          files="filmarks.js github.js posts.js diary.js sleep.js lives.js"
           if git diff --quiet -- $files; then
             echo "変更なし"
             echo "changed=false" >> "$GITHUB_OUTPUT"
