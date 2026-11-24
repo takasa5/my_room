@@ -226,12 +226,33 @@ test("目覚まし時計を押すと睡眠のリボンが出て、触った晩�
   assert.equal(await panel.locator("#panel-links a").count(), 0);
 }));
 
-test("ヘッドホンを押すと last.fm の画像が出る", () => withPage("audio", {}, async (page) => {
+test("ヘッドホンを押すと last.fm の画像が出て、開いたパネルが URL に載る", () => withPage("audio", {}, async (page) => {
   const data = await roomData(page);
   const panel = await openPanel(page, "audio");
   const link = panel.locator("a.image-link");
   assert.equal(await link.getAttribute("href"), data.items.audio.imageLink);
   await link.locator("img").waitFor();
+
+  // 開くと ?item= が付き、ブラウザの戻るで閉じ、進むでまた開く
+  const item = () => new URL(page.url()).searchParams.get("item");
+  assert.equal(item(), "audio");
+  await page.goBack();
+  await page.waitForSelector("#panel[open]", { state: "detached" });
+  assert.equal(item(), null);
+  await page.goForward();
+  await page.waitForSelector("#panel[open] a.image-link");
+  // [x] で閉じても URL から消える
+  await page.click("#panel-close");
+  await page.waitForSelector("#panel[open]", { state: "detached" });
+  await page.waitForFunction(() => !location.search.includes("item="));
+
+  // ?item= 付きの URL で来たら、そのパネルが開いた状態で始まり、閉じると URL から消える
+  await page.goto(base + "?item=audio");
+  await page.waitForSelector("#panel[open] a.image-link");
+  assert.equal(await page.locator("#panel-title").textContent(), data.items.audio.title);
+  await page.click("#panel-close");
+  await page.waitForSelector("#panel[open]", { state: "detached" });
+  assert.equal(item(), null);
 }));
 
 test("外部が全部落ちていても、部屋が描けてパネルが開く", () => withPage("offline", { offline: true }, async (page) => {
