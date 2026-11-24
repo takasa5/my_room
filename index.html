@@ -175,7 +175,64 @@
   .panel-body .diary-nav button:hover:not(:disabled), .panel-body .diary-nav button:focus-visible { border-color: var(--hot); color: var(--hot); }
   .panel-body .diary-nav button:disabled { opacity: .35; cursor: default; }
 
-  /* ---- 小物の一覧: スクロールすると小物の寄りの AA と名前が順に現れる ---- */
+  /* 音楽: 左に最近聴いた曲（last.fm）、右に行ったライブ（Notion の Lives）。狭い画面では縦に積む */
+  .panel-body .music { display: grid; gap: 22px; align-items: start; margin-top: 14px; }
+  /* 縦に積んだときも LIVES と横幅をそろえる（last.fm の画像は SVG なので広げてもにじまない） */
+  .panel-body .music > .image-link img, .panel-body .music > img { margin-top: 0; width: 100%; }
+  @media (min-width: 780px) { .panel-body .music { grid-template-columns: minmax(0, 450px) minmax(0, 1fr); } }
+  .panel-body .lives-head { display: flex; align-items: baseline; gap: 8px; }
+  .panel-body .lives-head small { font-size: 10px; color: var(--muted); letter-spacing: .12em; margin-right: auto; }
+  .panel-body .lives-head b { font-size: 26px; line-height: 1; color: var(--hot); }
+  .panel-body .lives-head span { font-size: 11px; color: var(--muted); }
+  /* 年ごとの本数。棒の高さは --n / --max */
+  .panel-body .years { display: flex; align-items: flex-end; gap: 2px; height: 34px; margin-top: 10px; }
+  .panel-body .years i { flex: 1; min-height: 1px; height: calc(100% * var(--n) / var(--max)); background: #5a4526; border-radius: 1px 1px 0 0; }
+  .panel-body .years i.zero { background: #262a33; }
+  .panel-body .years i.now { background: var(--hot); }
+  .panel-body .years-axis { display: flex; justify-content: space-between; font-size: 9px; color: var(--muted); margin-top: 3px; border-top: 1px solid var(--line); padding-top: 3px; }
+  /* 最近のライブは半券の形: 左に当日の写真、ミシン目をはさんで右に日付・アーティスト・公演名・会場 */
+  .panel-body .stubs { margin-top: 16px; gap: 10px; }
+  .panel-body a.stub {
+    display: grid; grid-template-columns: 74px 1fr; padding: 0; position: relative; min-height: 84px;
+  }
+  .panel-body a.stub::before { content: none; }
+  .panel-body .stub .shot { position: relative; overflow: hidden; border-radius: 3px 0 0 3px; background: #262a33; }
+  .panel-body .stub .shot img {
+    position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; border-radius: 0;
+    object-fit: cover; filter: grayscale(.55) brightness(.8); transition: filter .2s;
+  }
+  .panel-body .stub .shot .note { position: absolute; inset: 0; display: grid; place-items: center; color: var(--line); font-size: 22px; }
+  .panel-body .stub .info {
+    display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 9px 12px 9px 14px;
+    border-left: 1px dashed var(--line);
+  }
+  /* ミシン目の上下の切り欠き。枠の線の上に地の色の円を置いて半券を半円に削り、線は内側の半分だけ見せる。
+     円は全周に線を引き、外側の半分を clip-path で切り落とす（枠の線の太さの分だけ残し、半円の端が枠の線とつながるようにする）。
+     円の中心はミシン目の線と枠の線の交点 */
+  .panel-body .stub .info::before, .panel-body .stub .info::after {
+    content: ""; position: absolute; left: 74.5px; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%;
+    box-sizing: border-box;              /* 線込みで 14px にして、中心を交点に合わせる（* の指定は疑似要素に効かない） */
+    background: var(--panel); border: 1px solid var(--line);
+  }
+  .panel-body .stub .info::before { top: -.5px; clip-path: inset(calc(50% - 1px) 0 0 0); }              /* 上の辺: 下側の半周 */
+  .panel-body .stub .info::after { top: calc(100% + .5px); clip-path: inset(0 0 calc(50% - 1px) 0); }   /* 下の辺: 上側の半周 */
+  .panel-body a.stub:hover .info::before, .panel-body a.stub:hover .info::after,
+  .panel-body a.stub:focus-visible .info::before, .panel-body a.stub:focus-visible .info::after { border-color: var(--hot); }
+  .panel-body .stub .date { font-size: 11px; color: var(--muted); letter-spacing: .04em; }
+  .panel-body .stub .date em { font-style: normal; margin-left: 6px; font-size: 9px; }
+  .panel-body .stub .artist { font-size: 13px; color: var(--ink-strong); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .panel-body .stub .what { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .panel-body a.stub:hover, .panel-body a.stub:focus-visible { color: inherit; }
+  .panel-body a.stub:hover .shot img, .panel-body a.stub:focus-visible .shot img { filter: none; }
+  .panel-body a.stub:hover .artist, .panel-body a.stub:focus-visible .artist { color: var(--hot); }
+  .panel-body .most { margin: 14px 0 0; font-size: 11px; color: var(--muted); line-height: 1.7; }
+  .panel-body .most b { color: var(--ink-strong); font-weight: 400; }
+  .panel-body .most .one { white-space: nowrap; }
+  .panel-body .most .x { color: var(--hot); margin-left: 3px; }
+  .panel-body a.lives-more { border: none; padding: 0; margin-top: 6px; font-size: 11px; color: var(--muted); text-align: right; }
+  .panel-body a.lives-more::before { content: none; }
+
+  /* ---- 小物の一覧:スクロールすると小物の寄りの AA と名前が順に現れる ---- */
   .things { width: 100%; max-width: 1200px; margin-top: 96px; }
   .things ol {
     list-style: none; margin: 0; padding: 0;
@@ -258,12 +315,13 @@
 
   <footer>source: <a id="src" href="#" target="_blank" rel="noopener">Notion</a></footer>
 
-  <script src="data.js?v=18" defer></script>
+  <script src="data.js?v=19" defer></script>
   <script src="filmarks.js" defer></script>
   <script src="github.js" defer></script>
   <script src="posts.js" defer></script>
   <script src="diary.js" defer></script>
   <script src="sleep.js" defer></script>
+  <script src="lives.js" defer></script>
   <script src="scene.js?v=25" defer></script>
   <script>
   // 上の defer の script を読み終えてから動く
@@ -369,8 +427,13 @@
         const extra = document.getElementById("panel-extra");
         extra.replaceChildren();
         const di = it.diary && window.DIARY;        // diary.js が無い・空なら何も出さない
-        panel.classList.toggle("wide", !!(di && di.pages.length));
+        const li = it.lives && window.LIVES;        // lives.js が無い・空なら何も出さない
+        const hasLives = !!(li && li.total);
+        panel.classList.toggle("wide", !!(di && di.pages.length) || hasLives);
         if (di && di.pages.length) extra.append(diaryPart(di));
+        // ライブがあるときは、最近聴いた曲とライブを横に並べる箱に入れる
+        const music = hasLives ? document.createElement("div") : extra;
+        if (hasLives) { music.className = "music"; extra.append(music); }
         if (it.image) {
           const img = imageFor(it.image, it.imageSize);
           img.alt = "最近聴いた曲";
@@ -378,9 +441,10 @@
             const a = document.createElement("a");
             a.href = it.imageLink; a.target = "_blank"; a.rel = "noopener";
             a.className = "image-link"; a.append(img);
-            extra.append(a);
-          } else extra.append(img);
+            music.append(a);
+          } else music.append(img);
         }
+        if (hasLives) music.append(livesPart(li));
         if (it.booklog) {
           const box = document.createElement("div");
           box.className = "covers";
@@ -477,6 +541,67 @@
       next.addEventListener("click", () => { if (diarySpread < last) show(diarySpread + 1); });
       box.turn = (d) => (d < 0 ? prev : next).click();   // パネルの ← → から呼ぶ
       show(diarySpread);
+      return box;
+    }
+
+    // ライブ（lives.js）: 通算の本数と年ごとの本数の棒、最近のライブの半券、よく行くアーティスト
+    function livesPart(li) {
+      const DOW = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+      const box = document.createElement("section");
+      box.className = "lives";
+      box.setAttribute("aria-label", "行ったライブ");
+      const max = Math.max(...li.years.map((y) => y[1]), 1);
+      const first = li.years[0][0], last = li.years[li.years.length - 1][0];
+      box.innerHTML = `<div class="lives-head"><small>LIVES</small><b></b><span>shows since ${first}</span></div>
+        <div class="years" role="img" aria-label="年ごとのライブの本数（${first}〜${last}）"></div>
+        <div class="years-axis" aria-hidden="true"><span>${first}</span><span>${last}</span></div>
+        <ul class="stubs" aria-label="最近のライブ"></ul>`;
+      box.querySelector(".lives-head b").textContent = li.total;
+      box.querySelector(".years").replaceChildren(...li.years.map(([y, n], i) => {
+        const bar = document.createElement("i");
+        bar.style.setProperty("--n", n); bar.style.setProperty("--max", max);
+        bar.title = `${y}: ${n}`;
+        if (!n) bar.className = "zero"; else if (i === li.years.length - 1) bar.className = "now";
+        return bar;
+      }));
+      box.querySelector(".stubs").replaceChildren(...li.lives.map((l) => {
+        const item = document.createElement("li"), a = document.createElement("a");
+        a.href = l.url; a.target = "_blank"; a.rel = "noopener"; a.className = "stub";
+        const d = new Date(l.date + "T00:00:00Z");
+        a.innerHTML = `<span class="shot"></span><span class="info">
+          <span class="date">${l.date.replaceAll("-", ".")}<em>${DOW[d.getUTCDay()]}</em></span>
+          <span class="artist"></span><span class="what"></span><span class="what"></span></span>`;
+        const shot = a.querySelector(".shot");
+        const note = () => { const s = document.createElement("span"); s.className = "note"; s.textContent = "♪"; s.setAttribute("aria-hidden", "true"); return s; };
+        if (l.image) {
+          const img = document.createElement("img");
+          img.src = l.image; img.alt = "";
+          img.style.objectPosition = `50% ${l.position * 100}%`;
+          img.addEventListener("error", () => img.replaceWith(note()));   // 取れなければ写真のない半券にする
+          shot.append(img);
+        } else shot.append(note());
+        const [artist, title, venue] = [a.querySelector(".artist"), ...a.querySelectorAll(".what")];
+        artist.textContent = l.artists.join(" × ") || l.title;
+        title.textContent = l.title;
+        if (l.venue) venue.textContent = "@ " + l.venue; else venue.remove();
+        item.append(a); return item;
+      }));
+      if (li.top.length) {
+        const most = document.createElement("p");
+        most.className = "most";
+        most.append("most seen  ");
+        li.top.forEach((t, i) => {
+          const one = document.createElement("span"), b = document.createElement("b"), x = document.createElement("span");
+          b.textContent = t.name; x.className = "x"; x.textContent = "×" + t.count;
+          one.className = "one"; one.append(b, x);      // 名前の途中では折り返さない
+          most.append(...(i ? [" · "] : []), one);
+        });
+        box.append(most);
+      }
+      const more = document.createElement("a");
+      more.href = li.url; more.target = "_blank"; more.rel = "noopener";
+      more.className = "lives-more"; more.textContent = `all ${li.total} shows ↗`;
+      box.append(more);
       return box;
     }
 
@@ -675,6 +800,9 @@
       });
       if (window.FILMARKS && Object.values(items).some((it) => it.filmarks)) {
         window.FILMARKS.works.forEach((w) => { const im = new Image(); im.src = w.image; preloaded.push(im); });
+      }
+      if (window.LIVES && Object.values(items).some((it) => it.lives)) {
+        window.LIVES.lives.forEach((l) => { if (l.image) { const im = new Image(); im.src = l.image; preloaded.push(im); } });
       }
       if (window.GITHUB && Object.values(items).some((it) => it.github)) {
         window.GITHUB.repos.forEach((r) => { const im = new Image(); im.src = r.image; preloaded.push(im); });
