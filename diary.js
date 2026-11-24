@@ -386,6 +386,13 @@ window.DIARY = {
       "date": "2026-10-01",
       "image": "https://abstracted-lancer-5f0.notion.site/image/attachment%3A0e7b8207-b04b-4f4a-bac7-edbcbdb6d5c8%3A%E3%82%B9%E3%82%AD%E3%83%A3%E3%83%B3_20261031-1714.jpg?table=block&id=40a8baf3-c04b-80a0-a2ab-fd96e4aca198&spaceId=ad8c9002-f344-4410-aa98-22be72365f1e&width=800&cache=v2",
       "ratio": 0.976
+    },
+    {
+      "title": "2026/10-11",
+      "url": "https://abstracted-lancer-5f0.notion.site/4218baf3c04b80ee8962d3270c0f0247",
+      "date": "2026-10-24",
+      "image": "https://abstracted-lancer-5f0.notion.site/image/attachment%3Aca40fcf3-4a99-4aea-a071-7577a937bf70%3A1000013946.jpg?table=block&id=4218baf3-c04b-80e3-91a6-e5040785be03&spaceId=ad8c9002-f344-4410-aa98-22be72365f1e&width=800&cache=v2",
+      "ratio": 0.983
     }
   ]
 };
