@@ -21,7 +21,7 @@ fi
 
 # 変えてよいのは取得スクリプトだけ（データ・workflow・check-data.js・この仕組み自体は変えさせない）
 files=$(git apply --numstat "$patch" | cut -f3-)
-bad=$(grep -vxE 'scripts/fetch-(filmarks|github|posts|diary|sleep)\.mjs' <<< "$files" || true)
+bad=$(grep -vxE 'scripts/fetch-(filmarks|github|posts|diary|sleep|lives)\.mjs' <<< "$files" || true)
 if [ -n "$bad" ]; then
   echo "変えてはいけないファイルを変えている:" >&2
   echo "$bad" >&2

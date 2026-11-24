@@ -43,7 +43,7 @@ if (!isObj(data)) {
     for (const [id, it] of Object.entries(data.items)) {
       const w = `items.${id}`;
       if (!isObj(it)) { fail(w, "オブジェクトにする"); continue; }
-      checkKeys(w, it, ["title", "links", "image", "imageSize", "imageLink", "booklog", "filmarks", "github", "posts", "diary", "sleep"]);
+      checkKeys(w, it, ["title", "links", "image", "imageSize", "imageLink", "booklog", "filmarks", "github", "posts", "diary", "sleep", "lives"]);
 
       // 押しても反応しない家具にならないよう、scene.js に同じ id の家具があること
       if (!sceneIds.has(id)) fail(w, `scene.js に id "${id}" の家具がない`);
@@ -92,6 +92,7 @@ if (!isObj(data)) {
       if ("posts" in it && it.posts !== true) fail(`${w}.posts`, "true にする（使わないなら書かない）");
       if ("diary" in it && it.diary !== true) fail(`${w}.diary`, "true にする（使わないなら書かない）");
       if ("sleep" in it && it.sleep !== true) fail(`${w}.sleep`, "true にする（使わないなら書かない）");
+      if ("lives" in it && it.lives !== true) fail(`${w}.lives`, "true にする（使わないなら書かない）");
     }
 
     // filmarks.js は Actions がスクレイピングして作るので、中身の形もここで見る。
@@ -101,6 +102,7 @@ if (!isObj(data)) {
     if (Object.values(data.items).some((it) => isObj(it) && it.posts === true)) checkPosts();
     if (Object.values(data.items).some((it) => isObj(it) && it.diary === true)) checkDiary();
     if (Object.values(data.items).some((it) => isObj(it) && it.sleep === true)) checkSleep();
+    if (Object.values(data.items).some((it) => isObj(it) && it.lives === true)) checkLives();
   }
 }
 
@@ -143,6 +145,47 @@ function checkGithub() {
     if (!isText(r.name)) fail(`${rw}.name`, "空でない文字列にする");
     if (!isHttps(r.url)) fail(`${rw}.url`, "https:// の URL にする");
     if (!isHttps(r.image)) fail(`${rw}.image`, "https:// の URL にする");
+  });
+}
+
+// lives.js は Actions が公開 Notion サイトから作る。index.html は total と years で本数の棒を描き、lives を半券にし、url / image をそのまま使う
+function checkLives() {
+  const file = path.join(root, "lives.js");
+  if (!fs.existsSync(file)) { fail("lives.js", "lives: true の項目があるのにファイルがない"); return; }
+  const sb = { window: {} };
+  vm.runInNewContext(fs.readFileSync(file, "utf8"), sb, { filename: "lives.js" });
+  const li = sb.window.LIVES;
+  if (!isObj(li)) { fail("lives.js", "window.LIVES がオブジェクトになっていない"); return; }
+  checkKeys("LIVES", li, ["url", "total", "years", "top", "lives"]);
+  if (!isHttps(li.url)) fail("LIVES.url", "https:// の URL にする");
+  if (!isPosInt(li.total)) fail("LIVES.total", "正の整数にする");
+  const isCount = (n) => Number.isInteger(n) && n >= 0;
+  if (!Array.isArray(li.years) || !li.years.length) fail("LIVES.years", "1 件以上の配列にする");
+  else {
+    li.years.forEach((y, i) => {
+      if (!Array.isArray(y) || y.length !== 2 || !Number.isInteger(y[0]) || !isCount(y[1])) fail(`LIVES.years[${i}]`, "[年, 本数] の整数 2 つにする");
+      else if (i && y[0] !== li.years[i - 1][0] + 1) fail(`LIVES.years[${i}]`, "古い年から 1 年ずつ並べる");
+    });
+    if (li.years.reduce((s, y) => s + (Array.isArray(y) ? y[1] : 0), 0) !== li.total) fail("LIVES.years", "本数の合計が total と合わない");
+  }
+  if (!Array.isArray(li.top)) fail("LIVES.top", "配列にする");
+  else li.top.forEach((t, i) => {
+    if (!isObj(t) || !isText(t.name) || !isPosInt(t.count)) fail(`LIVES.top[${i}]`, "{ name: 空でない文字列, count: 正の整数 } にする");
+  });
+  if (!Array.isArray(li.lives)) { fail("LIVES.lives", "配列にする"); return; }
+  li.lives.forEach((l, i) => {
+    const lw = `LIVES.lives[${i}]`;
+    if (!isObj(l)) { fail(lw, "オブジェクトにする"); return; }
+    checkKeys(lw, l, ["title", "url", "date", "artists", "venue", "image", "position"]);
+    if (!isText(l.title)) fail(`${lw}.title`, "空でない文字列にする");
+    if (!isHttps(l.url)) fail(`${lw}.url`, "https:// の URL にする");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(l.date) || Number.isNaN(Date.parse(l.date + "T00:00:00Z"))) fail(`${lw}.date`, "YYYY-MM-DD にする");
+    if (!Array.isArray(l.artists) || !l.artists.every(isText)) fail(`${lw}.artists`, "空でない文字列の配列にする");
+    if (typeof l.venue !== "string") fail(`${lw}.venue`, "文字列にする（無ければ空）");
+    if ("image" in l) {
+      if (!isHttps(l.image)) fail(`${lw}.image`, "https:// の URL にする");
+      if (!(typeof l.position === "number" && l.position >= 0 && l.position <= 1)) fail(`${lw}.position`, "0〜1 の数にする");
+    } else if ("position" in l) fail(`${lw}.position`, "image がないのに書いてある");
   });
 }
 

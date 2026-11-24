@@ -189,7 +189,7 @@ jobs:
           # 外へ繋がる道具は peek.mjs（ホストを絞ってある）と、取得スクリプトを update-data.yml と同じ引数で動かすことだけ
           claude_args: |
             --max-turns 40
-            --allowedTools "Read,Glob,Grep,Edit,Write,Bash(node scripts/auto-fix/peek.mjs:*),Bash(node scripts/fetch-filmarks.mjs tks5 8),Bash(node scripts/fetch-posts.mjs 5),Bash(node scripts/fetch-diary.mjs 800),Bash(npm run check),Bash(git diff:*),Bash(git status)"
+            --allowedTools "Read,Glob,Grep,Edit,Write,Bash(node scripts/auto-fix/peek.mjs:*),Bash(node scripts/fetch-filmarks.mjs tks5 8),Bash(node scripts/fetch-posts.mjs 5),Bash(node scripts/fetch-diary.mjs 800),Bash(node scripts/fetch-lives.mjs 3 3),Bash(npm run check),Bash(git diff:*),Bash(git status)"
             --disallowedTools "WebFetch,WebSearch"
             --json-schema '{"type":"object","additionalProperties":false,"required":["outcome","title","body"],"properties":{"outcome":{"type":"string","enum":["fix","report"]},"title":{"type":"string","maxLength":80},"body":{"type":"string","maxLength":6000}}}'
           prompt: |
@@ -209,7 +209,7 @@ jobs:
             ## 使える道具
             - 取得先の生の応答を見る: `node scripts/auto-fix/peek.mjs <URL>`（POST なら `--post '<JSON>'` を足す）。
               繋がるのは https://filmarks.com と https://abstracted-lancer-5f0.notion.site だけ。本文は `.auto-fix/peek/` に保存される
-            - 取得スクリプトを試す: `node scripts/fetch-filmarks.mjs tks5 8`、`node scripts/fetch-posts.mjs 5`、`node scripts/fetch-diary.mjs 800`
+            - 取得スクリプトを試す: `node scripts/fetch-filmarks.mjs tks5 8`、`node scripts/fetch-posts.mjs 5`、`node scripts/fetch-diary.mjs 800`、`node scripts/fetch-lives.mjs 3 3`
             - 形の確認: `npm run check`
             - GitHub（トークンが要る）と Sleep（Google の Secret が要る）は、この job では動かせない。ログとコードから判断する
 
@@ -285,6 +285,7 @@ jobs:
                 scripts/fetch-github.mjs)   run node scripts/fetch-github.mjs takasa5 4 26 || ok=false ;;
                 scripts/fetch-posts.mjs)    run node scripts/fetch-posts.mjs 5 || ok=false ;;
                 scripts/fetch-diary.mjs)    run node scripts/fetch-diary.mjs 800 || ok=false ;;
+                scripts/fetch-lives.mjs)    run node scripts/fetch-lives.mjs 3 3 || ok=false ;;
                 *) echo "$f はこの job では試せない（Secret が要る）" >> "$log"; ok=false ;;
               esac
             done

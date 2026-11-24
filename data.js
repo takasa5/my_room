@@ -25,7 +25,9 @@ window.ROOM_DATA = {
       // パネルに出す「最近聴いた曲」（last.fm）
       image: "https://lastfm-recently-played.jeffreyca.workers.dev/svg?user=tixino&theme=nord&width=450&username=0&stats=compact&footer=wave",
       imageSize: [450, 382],                       // 画像の縦横（届くまでの枠の大きさ。ずれても届けば本来の大きさになる）
-      imageLink: "https://www.last.fm/user/tixino"   // 画像を押すと開くページ
+      imageLink: "https://www.last.fm/user/tixino",  // 画像を押すと開くページ
+      // 画像の横に出す「行ったライブ」（Notion の Lives）。中身は lives.js（scripts/fetch-lives.mjs が生成）
+      lives: true
     },
     papers: {
       title: "📮 Posts",

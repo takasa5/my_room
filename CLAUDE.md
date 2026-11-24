@@ -8,13 +8,14 @@
 * `github.js` は `scripts/fetch-github.mjs` が作る（`.github/workflows/update-data.yml` が毎日更新する）。手で書き換えない
 * `diary.js` は `scripts/fetch-diary.mjs` が公開 Notion サイトの Paper Diary から作る（`.github/workflows/update-data.yml` が毎日更新する）。手で書き換えない
 * `sleep.js` は `scripts/fetch-sleep.mjs` が Google Health API（旧 Fitbit）から作る（`.github/workflows/update-data.yml` が毎日更新する。Secret の `GOOGLE_CLIENT_ID`・`GOOGLE_CLIENT_SECRET`・`GOOGLE_HEALTH_REFRESH_TOKEN` を使う）。手で書き換えない。公開リポジトリなので、出すのは 1 晩につき入眠・起床・睡眠時間（5 分単位）だけにし、取った中身をログに出さない
+* `lives.js` は `scripts/fetch-lives.mjs` が公開 Notion サイトの Lives（ライブ履歴）から作る（`.github/workflows/update-data.yml` が毎日更新する）。手で書き換えない
 * `posts.js` は `scripts/fetch-posts.mjs` が公開 Notion サイトから作る（`.github/workflows/update-data.yml` が毎日更新する）。手で書き換えない
 
 ## 確認
 
 | コマンド | 中身 |
 | --- | --- |
-| `npm run check` | `data.js`・`filmarks.js`・`github.js`・`posts.js`・`diary.js`・`sleep.js` の形を確かめる（`scripts/check-data.js`）。ブラウザも外部への通信も使わない |
+| `npm run check` | `data.js`・`filmarks.js`・`github.js`・`posts.js`・`diary.js`・`sleep.js`・`lives.js` の形を確かめる（`scripts/check-data.js`）。ブラウザも外部への通信も使わない |
 | `npm run e2e` | `index.html` を Chromium で開き、画面の主な流れを確かめる（`e2e/`） |
 
 どちらも CI（`.github/workflows/test.yml`）で動く。PR で動き、main では `deploy.yml` が公開の前に呼ぶ（通らなければ公開しない）。初回は `npm ci` と `npx playwright-core install chromium` が必要。
