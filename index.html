@@ -255,7 +255,7 @@
   }
   .thing h3 { font-size: 15px; margin: 4px 0 8px; font-weight: 700; }
   .thing .card { display: block; height: 100%; color: inherit; text-decoration: none; }
-  /* リンク先のない小物のカードは、押すとパネルを開くボタン */
+  /* パネルに中身のある小物のカードは、押すとパネルを開くボタン */
   .thing button.card { font: inherit; background: none; border: 0; padding: 0; width: 100%; text-align: left; cursor: pointer; }
   .thing .card:hover h3, .thing .card:focus-visible h3 { color: var(--hot); }
   .thing .card:hover pre.crop { filter: brightness(1.25); }
@@ -829,14 +829,22 @@
     });
 
     // ---- 小物の一覧（カード） ----------------------------------------
+    // パネルにリンクのほかの中身（画像、表紙、草、日記など）が出るか。open() が中身を出す条件と揃える
+    const hasPanelContent = (it) => !!(it.image || it.booklog
+      || (it.filmarks && window.FILMARKS && window.FILMARKS.works.length)
+      || (it.github && window.GITHUB)
+      || (it.posts && window.POSTS && window.POSTS.posts.length)
+      || (it.sleep && window.SLEEP && window.SLEEP.nights.some(Boolean))
+      || (it.diary && window.DIARY && window.DIARY.pages.length)
+      || (it.lives && window.LIVES && window.LIVES.total));
     const thingsEl = document.getElementById("things");
     const cards = Object.entries(items).map(([id, it]) => {
       const li = document.createElement("li");
       li.className = "thing";
-      // カード全体（寄りの AA と名前）が 1 つのリンク
-      // リンク先がない小物（目覚まし時計）は、押すとパネルを開くボタンにする
+      // カード全体（寄りの AA と名前）が 1 つのボタンで、押すと部屋の小物と同じくパネルを開く。
+      // パネルにリンクしか出ない小物は、カードを押すとそのリンクを直接開く
       const inner = `<pre class="crop" aria-hidden="true"></pre><h3></h3>`;
-      if (it.links && it.links.length) {
+      if (it.links && it.links.length && !hasPanelContent(it)) {
         li.innerHTML = `<a class="card" target="_blank" rel="noopener">${inner}</a>`;
         li.querySelector("a.card").href = it.links[0].url;
       } else {

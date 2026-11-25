@@ -106,9 +106,13 @@ test("部屋が描け、すべての小物とカードがある", () => withPage
   // 見えている小物を押せるように、data.js の全項目が絵の中にあること
   assert.deepEqual(drawn.sort(), [...ids].sort(), "絵の中に出ていない小物がある");
 
-  // links のある小物はリンク、ない小物（目覚まし時計）はパネルを開くボタン
+  // パネルにリンクのほかの中身が出る小物（と links のない小物）はパネルを開くボタン、ほかは最初のリンク
+  const PANEL_KEYS = ["image", "booklog", "filmarks", "github", "posts", "sleep", "diary", "lives"];
   const cards = await page.$$eval("#things .card", (els) => els.map((el) => (el.tagName === "A" ? el.href : null)));
-  assert.deepEqual(cards, ids.map((id) => data.items[id].links?.[0].url ?? null), "カードのリンクが data.js と違う");
+  assert.deepEqual(cards, ids.map((id) => {
+    const it = data.items[id];
+    return PANEL_KEYS.some((k) => it[k]) ? null : it.links?.[0].url ?? null;
+  }), "カードのリンクが data.js と違う");
 
   // 読み上げでは、点描は 1 枚の絵で、中の 1 万字を超える文字は読ませない。ページの見出しと main がある
   const tree = await page.locator("body").ariaSnapshot();
@@ -223,10 +227,10 @@ test("目覚まし時計を押すと睡眠のリボンが出て、触った晩�
   await page.mouse.move(box.x + (L + (gap + 0.5) * (vb - L - R) / sl.nights.length) * box.width / vb, box.y + box.height / 2);
   assert.match(await panel.locator(".readout .now").textContent(), new RegExp(`^${day(gap)}.*no record`));
 
-  // リンク先のない小物は、一覧のカードを押してもパネルが開く
+  // 一覧のカードを押してもパネルが開く
   await page.click("#panel-close");
   await page.waitForSelector("#panel[open]", { state: "detached" });
-  await page.locator("#things button.card").first().click();
+  await page.locator("#things button.card", { hasText: (await roomData(page)).items.clock.title }).click();
   await page.waitForSelector("#panel[open] .sleep");
   assert.equal(await panel.locator("#panel-links a").count(), 0);
 }));
