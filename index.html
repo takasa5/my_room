@@ -323,6 +323,9 @@
   <script src="sleep.js" defer></script>
   <script src="lives.js" defer></script>
   <script src="scene.js?v=25" defer></script>
+  <!-- 訪問の計測（GoatCounter。Cookie を使わない）。読み込みで 1 回数え、小物を開いたときと外へのリンクを押したときは下の track() で数える。
+       localhost や file:// では数えない（GoatCounter の既定） -->
+  <script data-goatcounter="https://takasa5.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
   <script>
   // 上の defer の script を読み終えてから動く
   document.addEventListener("DOMContentLoaded", async function () {
@@ -413,8 +416,24 @@
       else if (panel.open) { closingByHistory = true; panel.close(); }
     });
 
+    // ---- 計測（GoatCounter） --------------------------------------------------
+    // count.js は async で、読めないこともある（ブロッカー、通信の失敗）。そのときは数えずに何もしない
+    const track = (vars) => { const gc = window.goatcounter; if (gc && typeof gc.count === "function") gc.count(vars); };
+    // 外へのリンク（Notion など）を押したら、行き先の URL をイベントとして数える。中クリックで開いたときも
+    const trackLink = (e) => {
+      const a = e.target.closest && e.target.closest("a[href]");
+      if (!a || (e.type === "auxclick" && e.button !== 1)) return;
+      const url = new URL(a.href, location.href);
+      if (url.origin === location.origin) return;
+      track({ path: url.href, title: a.textContent.trim() || a.getAttribute("aria-label") || url.hostname, event: true });
+    };
+    document.addEventListener("click", trackLink);
+    document.addEventListener("auxclick", trackLink);
+
     function open(id, { fromHistory = false } = {}) {
       const it = items[id];
+      // 押して開いたときは ?item=<id> の閲覧として数える（URL から来たときは読み込みで数えているので、戻る・進むは数えない）
+      if (!fromHistory) track({ path: urlWith(id), title: it.title });
       if (!fromHistory && itemInURL() !== id) history.pushState({ panel: id }, "", urlWith(id));
       pushAnim(id);
       setTimeout(() => {
