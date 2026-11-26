@@ -7,7 +7,7 @@ import { writeFileSync } from "node:fs";
 const SITE = "https://abstracted-lancer-5f0.notion.site";
 const COLLECTION = "3b83cdf7-c025-4d48-ae56-0f3baef5e50d";     // 🎤 ライブ履歴 のデータソース
 const VIEW = "0666f93a-02f6-4773-90ae-3652a2a49244";           // 表のビュー（Date の新しい順）
-const LIST = `${SITE}/0b2463cf6aee46358c5a28a58f353018`;       // Lives のページ
+const LIST = `${SITE}/960831bc5b6c4d47bfbb3ac81fdbc52f`;       // Lives のページ（🎤 ライブ履歴）
 const count = Number(process.argv[2]) || 3;
 const topCount = Number(process.argv[3]) || 3;
 

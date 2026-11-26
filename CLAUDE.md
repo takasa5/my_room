@@ -17,8 +17,9 @@
 | --- | --- |
 | `npm run check` | `data.js`・`filmarks.js`・`github.js`・`posts.js`・`diary.js`・`sleep.js`・`lives.js` の形を確かめる（`scripts/check-data.js`）。ブラウザも外部への通信も使わない |
 | `npm run e2e` | `index.html` を Chromium で開き、画面の主な流れを確かめる（`e2e/`） |
+| `node scripts/check-links.mjs` | ページに載せている公開 Notion サイトへのリンクが、ログインなしで開けるかを確かめる。Notion の API に問い合わせる |
 
-どちらも CI（`.github/workflows/test.yml`）で動く。PR で動き、main では `deploy.yml` が公開の前に呼ぶ（通らなければ公開しない）。初回は `npm ci` と `npx playwright-core install chromium` が必要。
+`check` と `e2e` は CI（`.github/workflows/test.yml`）で動く。PR で動き、main では `deploy.yml` が公開の前に呼ぶ（通らなければ公開しない）。初回は `npm ci` と `npx playwright-core install chromium` が必要。
 
 `data.js` に新しいキーを足したら、`scripts/check-data.js` も合わせて直す（知らないキーはエラーにしている）。
 
@@ -27,6 +28,8 @@
 main に push すると `.github/workflows/deploy.yml` が、テストを通したうえで `scripts/build-site.js` の `FILES` にあるファイルだけを GitHub Pages に置く。ページが読むファイルを増やしたら `FILES` に足す（E2E も同じ公開物を配信するので、足し忘れると E2E が失敗する）。
 
 部屋の絵は表示を速くするため、`build-site.js` が `scene.js` の採用中の版（`Scene.DEFAULT_STYLE`）で描いておく。画面幅ごとの絵は公開する `index.html` の `<!-- room-art -->` に `<template>` で入れ、一覧の寄りの AA は `art/<文字数>/<小物の id>.html` に書く。`?style=` で別の版を選んだときや、リポジトリの `index.html` をそのまま開いたときは、ページがその場で描く。絵も描いたものも生成物なのでコミットしない。
+
+リンクの確認は `.github/workflows/check-links.yml` が、毎日のデータ更新のあとと、リンクを書くファイルを変えた PR で動かす。外部と通信するので公開の前のテストには入れない。main で開けないリンクが見つかるとラベル `broken-link` の Issue を作り、全部開けるようになると閉じる。Notion のページへのリンクを足したら、ログインしていない状態で開けるかも確かめる（Notion サイトは公開していないページでも HTTP 200 を返すので、ステータスでは分からない）。
 
 ## E2E
 
