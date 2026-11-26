@@ -1,5 +1,5 @@
 // data.js の形が index.html と scene.js の期待どおりかを確かめる。
-// ブラウザも外部への通信も使わない。リンク先が生きているかは見ない。
+// ブラウザも外部への通信も使わない。リンク先が開けるかは見ない（Notion のリンクは scripts/check-links.mjs が見る）。
 //   node scripts/check-data.js
 const fs = require("node:fs");
 const path = require("node:path");

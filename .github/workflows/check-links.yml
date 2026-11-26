@@ -1,0 +1,106 @@
+# ページに載せている公開 Notion サイトへのリンクが、ログインなしで開けるかを確かめる（scripts/check-links.mjs）。
+# Notion 側で公開をやめた・公開していないページを指していた、をここで見つける。直すのは Notion の公開設定か
+# リンク先なので、auto-fix（取得スクリプトを直す）には回さず、報告 Issue（ラベル broken-link）を作るだけにする。
+#
+#   * main: 毎日のデータ更新（Update data）が終わるたびに確かめる。開けないリンクがあれば Issue を作る
+#     （開いていれば中身を最新にする）。全部開けるようになったら、開いている Issue を閉じる
+#   * PR: リンクを書くファイルが変わったら確かめる。開けないリンクがあれば失敗にするだけで、Issue は作らない
+#
+# 外部と通信するので、test.yml（deploy.yml が公開の前に呼ぶ）には入れない。Notion の障害で公開が止まらないように。
+name: Check links
+
+on:
+  workflow_run:
+    workflows: ["Update data"]
+    types: [completed]
+  pull_request:
+    paths:
+      - "*.js"
+      - index.html
+      - scripts/fetch-*.mjs
+      - scripts/check-links.mjs
+      - .github/workflows/check-links.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: check-links-${{ github.event_name == 'pull_request' && github.ref || 'main' }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    # workflow_run は main の run のときだけ（取得が一部失敗しても、取れた分はコミットされているので確かめる）
+    if: >-
+      github.event_name != 'workflow_run' ||
+      github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.conclusion != 'cancelled'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      result: ${{ steps.check.outputs.result }}
+      broken: ${{ steps.check.outputs.broken }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 24
+
+      # 0 = 全部開ける / 1 = 開けないリンクがある / 2 = 確かめられなかった（このときは Issue を作らず job を失敗にする）
+      - name: Check Notion links
+        id: check
+        run: |
+          set +e
+          node scripts/check-links.mjs broken.md
+          code=$?
+          set -e
+          case $code in
+            0) echo "result=ok" >> "$GITHUB_OUTPUT" ;;
+            1) echo "result=broken" >> "$GITHUB_OUTPUT"
+               { echo "broken<<EOF_BROKEN"; cat broken.md; echo "EOF_BROKEN"; } >> "$GITHUB_OUTPUT"
+               { echo "### 開けない Notion のリンク"; cat broken.md; } >> "$GITHUB_STEP_SUMMARY"
+               echo "::error title=開けない Notion のリンクがある::$(wc -l < broken.md | tr -d ' ') 本。Summary を見てください" ;;
+            *) echo "::error title=リンクを確かめられなかった::ログを見てください"; exit 1 ;;
+          esac
+
+      - name: Fail on broken links
+        if: steps.check.outputs.result == 'broken'
+        run: exit 1
+
+  # main で確かめた結果を Issue にする。リポジトリのコードは動かさない
+  report:
+    needs: check
+    if: ${{ !cancelled() && github.event_name != 'pull_request' && needs.check.outputs.result != '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - name: Open, update or close the report issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RESULT: ${{ needs.check.outputs.result }}
+          BROKEN: ${{ needs.check.outputs.broken }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          issue=$(gh issue list --label broken-link --state open --json number --jq '.[0].number // empty')
+          if [ "$RESULT" = ok ]; then
+            if [ -n "$issue" ]; then
+              gh issue close "$issue" --comment "Notion のリンクはすべて開けるようになった（${RUN_URL}）"
+            fi
+            exit 0
+          fi
+          body=$(printf '%s\n\n%s\n\n%s\n' \
+            "ページに載せている公開 Notion サイトへのリンクのうち、ログインなしで開けないものがある（scripts/check-links.mjs）。" \
+            "$BROKEN" \
+            "Notion でそのページをサイトに公開するか、リンク先を公開しているページに差し替える。生成物（lives.js など）のリンクは、作っている scripts/fetch-*.mjs を直す。全部開けるようになると、この Issue は自動で閉じる。最後に確かめた run: ${RUN_URL}")
+          if [ -n "$issue" ]; then
+            gh issue edit "$issue" --body "$body"
+          else
+            gh label create broken-link --color d73a4a --description "公開 Notion へのリンクが開けない" 2>/dev/null || true
+            gh issue create --title "開けない Notion のリンクがある" --label broken-link --body "$body"
+          fi
