@@ -1,7 +1,7 @@
 // scripts/fetch-lives.mjs が生成。手で編集しない。
 window.LIVES = {
   "url": "https://abstracted-lancer-5f0.notion.site/0b2463cf6aee46358c5a28a58f353018",
-  "total": 95,
+  "total": 96,
   "years": [
     [
       2010,
@@ -69,7 +69,7 @@ window.LIVES = {
     ],
     [
       2026,
-      10
+      11
     ]
   ],
   "top": [
@@ -79,7 +79,7 @@ window.LIVES = {
     },
     {
       "name": "People In The Box",
-      "count": 15
+      "count": 16
     },
     {
       "name": "mol-74",
@@ -87,6 +87,17 @@ window.LIVES = {
     }
   ],
   "lives": [
+    {
+      "title": "People In The Box 2026 \"あなたはなぜ箱を開けるのか？\" - 『World Technique』 release tour -",
+      "url": "https://abstracted-lancer-5f0.notion.site/4238baf3c04b8030812bf292500925b3",
+      "date": "2026-11-25",
+      "artists": [
+        "People In The Box"
+      ],
+      "venue": "恵比寿 The Garden Hall",
+      "image": "https://abstracted-lancer-5f0.notion.site/image/attachment%3Ad4aa4d39-ec5c-49b7-ae12-9be74060efcf%3A1000013954.jpg?table=block&id=4238baf3-c04b-8030-812b-f292500925b3&spaceId=ad8c9002-f344-4410-aa98-22be72365f1e&width=400&cache=v2",
+      "position": 0.18
+    },
     {
       "title": "TOUR Your November",
       "url": "https://abstracted-lancer-5f0.notion.site/41e8baf3c04b800bae49d04fb5fb70e6",
@@ -108,18 +119,6 @@ window.LIVES = {
       "venue": "COTTON CLUB",
       "image": "https://abstracted-lancer-5f0.notion.site/image/attachment%3A7f6e952c-c7b9-4b8e-b481-efc2ae683adc%3A1000013736.jpg?table=block&id=40b8baf3-c04b-8098-a522-e320060f7f1b&spaceId=ad8c9002-f344-4410-aa98-22be72365f1e&width=400&cache=v2",
       "position": 0.5
-    },
-    {
-      "title": "odol × Ryu Matsuyama “d r i f t”",
-      "url": "https://abstracted-lancer-5f0.notion.site/3d98baf3c04b80019a69c256d763b437",
-      "date": "2026-09-12",
-      "artists": [
-        "odol",
-        "Ryu Matsuyama"
-      ],
-      "venue": "東京キネマ倶楽部",
-      "image": "https://abstracted-lancer-5f0.notion.site/image/attachment%3A8797d079-4212-4941-975d-a19e0b4b81ad%3A1000012729.jpg?table=block&id=3d98baf3-c04b-8001-9a69-c256d763b437&spaceId=ad8c9002-f344-4410-aa98-22be72365f1e&width=400&cache=v2",
-      "position": 0
     }
   ]
 };
