@@ -1,6 +1,6 @@
 // scripts/fetch-lives.mjs が生成。手で編集しない。
 window.LIVES = {
-  "url": "https://abstracted-lancer-5f0.notion.site/0b2463cf6aee46358c5a28a58f353018",
+  "url": "https://abstracted-lancer-5f0.notion.site/960831bc5b6c4d47bfbb3ac81fdbc52f",
   "total": 96,
   "years": [
     [
