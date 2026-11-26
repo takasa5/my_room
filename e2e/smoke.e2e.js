@@ -57,6 +57,10 @@ async function routeExternal(page, { offline = false } = {}) {
       const cb = url.searchParams.get("callback");
       return route.fulfill({ contentType: "text/javascript", body: `${cb}(${JSON.stringify({ books: FAKE_BOOKS })});` });
     }
+    // GoatCounter（計測）は数えた中身を window.__counted に残すだけの偽物にする
+    if (url.hostname === "gc.zgo.at") {
+      return route.fulfill({ contentType: "text/javascript", body: "window.goatcounter = { count: (v) => (window.__counted = window.__counted || []).push(v) };" });
+    }
     if (req.resourceType() === "image") return route.fulfill({ contentType: "image/png", body: PNG });
     return route.abort();
   });
@@ -235,9 +239,12 @@ test("目覚まし時計を押すと睡眠のリボンが出て、触った晩�
   assert.equal(await panel.locator("#panel-links a").count(), 0);
 }));
 
-test("ヘッドホンを押すと last.fm の画像と、行ったライブの半券が出て、開いたパネルが URL に載る", () => withPage("audio", {}, async (page) => {
+test("ヘッドホンを押すと last.fm の画像と、行ったライブの半券が出て、開いたパネルが URL に載り、計測される", () => withPage("audio", {}, async (page) => {
   const data = await roomData(page);
+  await page.waitForFunction(() => window.goatcounter);
+  const counted = () => page.evaluate(() => window.__counted || []);
   const panel = await openPanel(page, "audio");
+  assert.deepEqual(await counted(), [{ path: "/?item=audio", title: data.items.audio.title }], "開いたパネルが数えられていない");
   const link = panel.locator("a.image-link");
   assert.equal(await link.getAttribute("href"), data.items.audio.imageLink);
   await link.locator("img").waitFor();
@@ -256,6 +263,13 @@ test("ヘッドホンを押すと last.fm の画像と、行ったライブの�
   assert.equal(item(), null);
   await page.goForward();
   await page.waitForSelector("#panel[open] a.image-link");
+  assert.equal((await counted()).length, 1, "戻る・進むで開き直したのも数えている");
+
+  // 外へのリンクを押すと、行き先がイベントとして数えられる（別タブは開かせない）
+  await page.evaluate(() => window.addEventListener("click", (e) => e.preventDefault(), { capture: true }));
+  await link.click();
+  const ev = (await counted())[1];
+  assert.ok(ev && ev.event && ev.path === new URL(data.items.audio.imageLink).href && ev.title, `外へのリンクが数えられていない: ${JSON.stringify(ev)}`);
   // [x] で閉じても URL から消える
   await page.click("#panel-close");
   await page.waitForSelector("#panel[open]", { state: "detached" });
